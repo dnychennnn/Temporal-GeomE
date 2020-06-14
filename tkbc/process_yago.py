@@ -7,6 +7,7 @@ from pathlib import Path
 import pickle
 import re
 import sys
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -28,9 +29,11 @@ def prepare_dataset_rels(path, name):
     """
     files = ['train', 'valid', 'test']
     entities, relations, timestamps = set(), set(), defaultdict(int)
+    total_facts = 0
     for f in files:
         file_path = os.path.join(path, f)
         to_read = open(file_path, 'r')
+        
         for line in to_read.readlines():
             v = line.strip().split('\t')
             if len(v) > 4:
@@ -48,11 +51,20 @@ def prepare_dataset_rels(path, name):
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
+            total_facts += 1
 
         to_read.close()
+    
+    ### Long tail distribution analysis
+    plt.xlabel("Year of the Event")
+    plt.ylabel("# of Hits")
+    plt.title("Long Tail Distribution: Yago15k " + "\n" + "Facts with timestamps / Total Facts:" + str(sum(timestamps.values())) + "/" + str(total_facts))
+    plt.xlim(min(timestamps.keys()), max(timestamps.keys()))
+    plt.bar(list(timestamps.keys()), timestamps.values(), color='g')
+    plt.show()
 
     print(f"{len(timestamps)} timestamps")
-
+    
     entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
     relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
     timestamps_to_id = {x: i for (i, x) in enumerate(sorted(timestamps.keys()))}
