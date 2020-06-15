@@ -1,0 +1,19 @@
+1: h * r
+
+(h0r0 + h1r1 + h2r2 - h12r12) + (h0r1 + h1r0 - h2r12 + h12r2) e1 + (h0r2 + h1r12 + h2r0 - h12r1) e2 + (h0r12 + h1r2 - h2r1 + h12r0) e12
+
+2: h * r * t_conj :::  < t0 - t1e1 - t2e2 - t12e12 >
+
+t0(h0r0 + h1r1 + h2r2 - h12r12) - t1(h0r1 + h1r0 - h2r12 + h12r2) - t2(h0r2 + h1r12 + h2r0 - h12r1) - t12(h0r12 + h1r2 - h2r1 + h12r0) : scalar
+t1(h0r0 + h1r1 + h2r2 - h12r12) + t0(h0r1 + h1r0 - h2r12 + h12r2) + t12(h0r2 + h1r12 + h2r0 - h12r1) - t2(h0r12 + h1r2 - h2r1 + h12r0)   : e1
+-t2(h0r0 + h1r1 + h2r2 - h12r12) - t12(h0r1 + h1r0 - h2r12 + h12r2) + t0(h0r2 + h1r12 + h2r0 - h12r1) + t1(h0r12 + h1r2 - h2r1 + h12r0)  : e2
+- t12(h0r0 + h1r1 + h2r2 - h12r12) - t2(h0r1 + h1r0 - h2r12 + h12r2) + t1(h0r2 + h1r12 + h2r0 - h12r1) + t0(h0r12 + h1r2 - h2r1 + h12r0) : e12
+
+
+
+3: h* r * t_conj * T ::: < T0 + T1e1 + T2e2 + T12e12 >
+
+T0 [ t0((h0r0 + h1r1 + h2r2 - h12r12) - t1(h0r1 + h1r0 - h2r12 + h12r2) - t2(h0r2 + h1r12 + h2r0 - h12r1) - t12(h0r12 + h1r2 - h2r1 + h12r0)) ] + 
+T1 [ t1(h0r0 + h1r1 + h2r2 - h12r12) + t0(h0r1 + h1r0 - h2r12 + h12r2) + t12(h0r2 + h1r12 + h2r0 - h12r1) - t2(h0r12 + h1r2 - h2r1 + h12r0)   ] +
+T2 [ -t2(h0r0 + h1r1 + h2r2 - h12r12) - t12(h0r1 + h1r0 - h2r12 + h12r2) + t0(h0r2 + h1r12 + h2r0 - h12r1) + t1(h0r12 + h1r2 - h2r1 + h12r0)  ] -
+T12[ - t12(h0r0 + h1r1 + h2r2 - h12r12) - t2(h0r1 + h1r0 - h2r12 + h12r2) + t1(h0r2 + h1r12 + h2r0 - h12r1) + t0(h0r12 + h1r2 - h2r1 + h12r0) ]
