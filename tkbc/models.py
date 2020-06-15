@@ -481,7 +481,7 @@ class TGeomE1(TKBCModel):
 
         self.embeddings = nn.ModuleList([
             nn.Embedding(s, 2 * rank, sparse=True)
-            for s in [sizes[0], sizes[1], sizes[0], sizes[3]]
+            for s in [sizes[0], sizes[1], sizes[3]]
         ])
         self.embeddings[0].weight.data *= init_size
         self.embeddings[1].weight.data *= init_size
