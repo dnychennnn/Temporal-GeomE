@@ -697,9 +697,9 @@ class TGeomE2(TKBCModel):
         D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
         # (h*r) * t_conj
         W =   A * rhs[0] - B * rhs[1] - C * rhs[2] + D * rhs[3] # scalar
-        X = - A * rhs[1] - B * rhs[0] + C * rhs[3] - D * rhs[2] # e1   +  B * rhs[0]
+        X = - A * rhs[1] + B * rhs[0] + C * rhs[3] - D * rhs[2] # e1   +  B * rhs[0]
         Y = - A * rhs[2] + C * rhs[0] - B * rhs[3] + D * rhs[1] # e2
-        Z = - B * rhs[2] - C * rhs[1] - A * rhs[3] + D * rhs[0] # e1e2 + C * rhs[1]
+        Z = - B * rhs[2] + C * rhs[1] - A * rhs[3] + D * rhs[0] # e1e2 + C * rhs[1]
 
         to_time = self.embeddings[2].weight
         to_time = to_time[:, :self.rank], to_time[:, self.rank:self.rank*2], to_time[:, self.rank*2:self.rank*3], to_time[:, self.rank*3:]
