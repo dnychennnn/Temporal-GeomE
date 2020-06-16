@@ -8,7 +8,7 @@ from torch import optim
 
 from datasets import TemporalDataset
 from optimizers import TKBCOptimizer, IKBCOptimizer
-from models import ComplEx, TComplEx, TNTComplEx, TGeomE1
+from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2
 from regularizers import N3, Lambda3
 
 parser = argparse.ArgumentParser(
@@ -19,7 +19,7 @@ parser.add_argument(
     help="Dataset name"
 )
 models = [
-    'ComplEx', 'TComplEx', 'TNTComplEx', 'TGeomE1'
+    'ComplEx', 'TComplEx', 'TNTComplEx', 'TGeomE1', 'TGeomE2'
 ]
 parser.add_argument(
     '--model', choices=models,
