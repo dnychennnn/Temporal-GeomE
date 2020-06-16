@@ -510,7 +510,7 @@ class TGeomE1(TKBCModel):
 
         return torch.sum(
             (lhs[0] * rel[0] * time[0] + lhs[1] * rel[1] * time[0] +
-             lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1]) * rhs[0] +
+             lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1]) * rhs[0] -
             (lhs[1] * rel[0] * time[0] + lhs[0] * rel[1] * time[0] +
              lhs[0] * rel[0] * time[1] + lhs[1] * rel[1] * time[1]) * rhs[1],
             1, keepdim=True
@@ -534,7 +534,7 @@ class TGeomE1(TKBCModel):
         full_rel = rt[0] + rt[3], rt[1] + rt[2]
 
         return (
-                       (lhs[0] * full_rel[0] + lhs[1] * full_rel[1]) @ right[0].t() +
+                       (lhs[0] * full_rel[0] + lhs[1] * full_rel[1]) @ right[0].t() -
                        (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ right[1].t()
                ), (
                    torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
@@ -554,10 +554,10 @@ class TGeomE1(TKBCModel):
         time = time[:, :self.rank], time[:, self.rank:]
 
         return (
-                (lhs[0] * rel[0] * rhs[0] + lhs[1] * rel[1] * rhs[0] +
-                 lhs[1] * rel[0] * rhs[1] + lhs[0] * rel[1] * rhs[1]) @ time[0].t() +
-                (lhs[1] * rel[0] * rhs[0] + lhs[0] * rel[1] * rhs[0] +
-                 lhs[0] * rel[0] * rhs[1] + lhs[1] * rel[1] * rhs[1]) @ time[1].t()
+                (lhs[0] * rel[0] * rhs[0] + lhs[1] * rel[1] * rhs[0] -
+                 lhs[1] * rel[0] * rhs[1] - lhs[0] * rel[1] * rhs[1]) @ time[0].t() +
+                (lhs[1] * rel[0] * rhs[0] + lhs[0] * rel[1] * rhs[0] -
+                 lhs[0] * rel[0] * rhs[1] - lhs[1] * rel[1] * rhs[1]) @ time[1].t()
         )
 
     def get_rhs(self, chunk_begin: int, chunk_size: int):
@@ -575,8 +575,8 @@ class TGeomE1(TKBCModel):
         return torch.cat([
             lhs[0] * rel[0] * time[0] + lhs[1] * rel[1] * time[0] +
             lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1],
-            lhs[1] * rel[0] * time[0] + lhs[0] * rel[1] * time[0] +
-            lhs[0] * rel[0] * time[1] + lhs[1] * rel[1] * time[1]
+            -lhs[1] * rel[0] * time[0] - lhs[0] * rel[1] * time[0] -
+            lhs[0] * rel[0] * time[1] - lhs[1] * rel[1] * time[1]
         ], 1)
 
 
@@ -697,17 +697,17 @@ class TGeomE2(TKBCModel):
         D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
         # (h*r) * t_conj
         W =   A * rhs[0] - B * rhs[1] - C * rhs[2] + D * rhs[3] # scalar
-        X = - A * rhs[1] - B * rhs[0] + C * rhs[3] - D * rhs[2] # e1
+        X = - A * rhs[1] - B * rhs[0] + C * rhs[3] - D * rhs[2] # e1   +  B * rhs[0]
         Y = - A * rhs[2] + C * rhs[0] - B * rhs[3] + D * rhs[1] # e2
-        Z = - B * rhs[2] - C * rhs[1] - A * rhs[3] + D * rhs[0] # e1e2
+        Z = - B * rhs[2] - C * rhs[1] - A * rhs[3] + D * rhs[0] # e1e2 + C * rhs[1]
 
         to_time = self.embeddings[2].weight
         to_time = to_time[:, :self.rank], to_time[:, self.rank:self.rank*2], to_time[:, self.rank*2:self.rank*3], to_time[:, self.rank*3:]
         return (
-                (lhs[0] * rel[0] * rhs[0] + lhs[1] * rel[1] * rhs[0] +
-                 lhs[1] * rel[0] * rhs[1] + lhs[0] * rel[1] * rhs[1]) @ time[0].t() +
-                (lhs[1] * rel[0] * rhs[0] + lhs[0] * rel[1] * rhs[0] +
-                 lhs[0] * rel[0] * rhs[1] + lhs[1] * rel[1] * rhs[1]) @ time[1].t()
+                W @ time[0].transpose(0, 1) +
+                X @ time[1].transpose(0, 1) +
+                Y @ time[2].transpose(0, 1) +
+                Z @ time[3].transpose(0, 1)
         )
 
     def get_rhs(self, chunk_begin: int, chunk_size: int):
