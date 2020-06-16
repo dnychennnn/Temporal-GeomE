@@ -626,12 +626,19 @@ class TGeomE2(TKBCModel):
         rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
         time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
 
-        # compute <h, r, t_conj, T> ==> 4**4 / 2 
-        A =  rhs[0]*(lhs[0]*rel[0] + lhs[1]*rel[1] + lhs[2]*rel[2] - lhs[3]*rel[3]) - rhs[1]*(lhs[0]*rel[1] + lhs[1]*rel[0] - lhs[2]*rel[3] + lhs[3]*rel[2]) - rhs[2]*(lhs[0]*rel[2] + lhs[1]*rel[3] + lhs[2]*rel[0] - lhs[3]*rel[1]) - rhs[3]*(lhs[0]*rel[3] + lhs[1]*rel[2] - lhs[2]*rel[1] + lhs[3]*rel[0])
-        B =  rhs[1]*(lhs[0]*rel[0] + lhs[1]*rel[1] + lhs[2]*rel[2] - lhs[3]*rel[3]) + rhs[0]*(lhs[0]*rel[1] + lhs[1]*rel[0] - lhs[2]*rel[3] + lhs[3]*rel[2]) + rhs[3]*(lhs[0]*rel[2] + lhs[1]*rel[3] + lhs[2]*rel[0] - lhs[3]*rel[1]) - rhs[2]*(lhs[0]*rel[3] + lhs[1]*rel[2] - lhs[2]*rel[1] + lhs[3]*rel[0])
-        C = -rhs[2]*(lhs[0]*rel[0] + lhs[1]*rel[1] + lhs[2]*rel[2] - lhs[3]*rel[3]) - rhs[3]*(lhs[0]*rel[1] + lhs[1]*rel[0] - lhs[2]*rel[3] + lhs[3]*rel[2]) + rhs[0]*(lhs[0]*rel[2] + lhs[1]*rel[3] + lhs[2]*rel[0] - lhs[3]*rel[1]) + rhs[1]*(lhs[0]*rel[3] + lhs[1]*rel[2] - lhs[2]*rel[1] + lhs[3]*rel[0])
-        D = -rhs[3]*(lhs[0]*rel[0] + lhs[1]*rel[1] + lhs[2]*rel[2] - lhs[3]*rel[3]) - rhs[2]*(lhs[0]*rel[1] + lhs[1]*rel[0] - lhs[2]*rel[3] + lhs[3]*rel[2]) + rhs[1]*(lhs[0]*rel[2] + lhs[1]*rel[3] + lhs[2]*rel[0] - lhs[3]*rel[1]) + rhs[0]*(lhs[0]*rel[3] + lhs[1]*rel[2] - lhs[2]*rel[1] + lhs[3]*rel[0])
-        return torch.sum(time[0]*A + time[1]*B + time[2]*C - time[3]*D ,1, keepdim=True)
+        # compute <h, r, T, t_conj> ==> 4**4 / 2 
+        # h * r
+        A =   lhs[0]*rel[0]+ lhs[1]*rel[1]+ lhs[2]*rel[2]- lhs[3]*rel[3] # scalar
+        B =   lhs[0]*rel[1]+ lhs[1]*rel[0]- lhs[2]*rel[3]+ lhs[3]*rel[2] # e1
+        C =   lhs[0]*rel[2]+ lhs[2]*rel[0]+ lhs[1]*rel[3]- lhs[3]*rel[1]  # e2
+        D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
+        # (h*r) * time, note that we first change the +- sign for easier dot product later
+        W =   A * time[0]+ B * time[1]+ C * time[2]- D * time[3] # scalar
+        X = - A * time[1]- B * time[0]+ C * time[3]- D * time[2] # e1
+        Y = - A * time[2]- C * time[0]- B * time[3]+ D * time[1] # e2
+        Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
+
+        return torch.sum(W*rhs[0] + X * rhs[1] + Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
 
     def forward(self, x):
         lhs = self.embeddings[0](x[:, 0])
@@ -639,24 +646,36 @@ class TGeomE2(TKBCModel):
         rhs = self.embeddings[0](x[:, 2])
         time = self.embeddings[2](x[:, 3])
 
-        lhs = lhs[:, :self.rank], lhs[:, self.rank:]
-        rel = rel[:, :self.rank], rel[:, self.rank:]
-        rhs = rhs[:, :self.rank], rhs[:, self.rank:]
-        time = time[:, :self.rank], time[:, self.rank:]
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
+        time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
 
-        right = self.embeddings[0].weight
-        right = right[:, :self.rank], right[:, self.rank:]
 
-        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
-        full_rel = rt[0] + rt[3], rt[1] + rt[2]
+        # compute <h, r, T, t_conj> ==> 4**4 / 2 
+        # h * r
+        A =   lhs[0]*rel[0]+ lhs[1]*rel[1]+ lhs[2]*rel[2]- lhs[3]*rel[3] # scalar
+        B =   lhs[0]*rel[1]+ lhs[1]*rel[0]- lhs[2]*rel[3]+ lhs[3]*rel[2] # e1
+        C =   lhs[0]*rel[2]+ lhs[2]*rel[0]+ lhs[1]*rel[3]- lhs[3]*rel[1]  # e2
+        D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
+        # (h*r) * time, note that we first change the +- sign for easier dot product later
+        W =   A * time[0]+ B * time[1]+ C * time[2]- D * time[3] # scalar
+        X = - A * time[1]- B * time[0]+ C * time[3]- D * time[2] # e1
+        Y = - A * time[2]- C * time[0]- B * time[3]+ D * time[1] # e2
+        Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
+
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank:self.rank*2], to_score[:, self.rank*2:self.rank*3], to_score[:, self.rank*3:]
 
         return (
-                       (lhs[0] * full_rel[0] + lhs[1] * full_rel[1]) @ right[0].t() +
-                       (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ right[1].t()
+                    W @ to_score[0].transpose(0, 1) +
+                    X @ to_score[1].transpose(0, 1) +
+                    Y @ to_score[2].transpose(0, 1) +
+                    Z @ to_score[3].transpose(0, 1)
                ), (
-                   torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
-                   torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
-                   torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2)
+                    torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
+                    torch.sqrt(rel[0] ** 2 + rel[1] ** 2+ rel[2] ** 2+ rel[3] ** 2),
+                    torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
                ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
 
     def forward_over_time(self, x):
@@ -665,11 +684,25 @@ class TGeomE2(TKBCModel):
         rhs = self.embeddings[0](x[:, 2])
         time = self.embeddings[2].weight
 
-        lhs = lhs[:, :self.rank], lhs[:, self.rank:]
-        rel = rel[:, :self.rank], rel[:, self.rank:]
-        rhs = rhs[:, :self.rank], rhs[:, self.rank:]
-        time = time[:, :self.rank], time[:, self.rank:]
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
+        time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
 
+        # compute <h, r, t_conj, ?> ==> 4**4 / 2 
+        # h * r
+        A =   lhs[0]*rel[0]+ lhs[1]*rel[1]+ lhs[2]*rel[2]- lhs[3]*rel[3] # scalar
+        B = - lhs[0]*rel[1]- lhs[1]*rel[0]+ lhs[2]*rel[3]- lhs[3]*rel[2] # e1
+        C = - lhs[0]*rel[2]- lhs[2]*rel[0]- lhs[1]*rel[3]+ lhs[3]*rel[1]  # e2
+        D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
+        # (h*r) * t_conj
+        W =   A * rhs[0] - B * rhs[1] - C * rhs[2] + D * rhs[3] # scalar
+        X = - A * rhs[1] - B * rhs[0] + C * rhs[3] - D * rhs[2] # e1
+        Y = - A * rhs[2] + C * rhs[0] - B * rhs[3] + D * rhs[1] # e2
+        Z = - B * rhs[2] - C * rhs[1] - A * rhs[3] + D * rhs[0] # e1e2
+
+        to_time = self.embeddings[2].weight
+        to_time = to_time[:, :self.rank], to_time[:, self.rank:self.rank*2], to_time[:, self.rank*2:self.rank*3], to_time[:, self.rank*3:]
         return (
                 (lhs[0] * rel[0] * rhs[0] + lhs[1] * rel[1] * rhs[0] +
                  lhs[1] * rel[0] * rhs[1] + lhs[0] * rel[1] * rhs[1]) @ time[0].t() +
@@ -686,12 +719,20 @@ class TGeomE2(TKBCModel):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
         time = self.embeddings[2](queries[:, 3])
-        lhs = lhs[:, :self.rank], lhs[:, self.rank:]
-        rel = rel[:, :self.rank], rel[:, self.rank:]
-        time = time[:, :self.rank], time[:, self.rank:]
-        return torch.cat([
-            lhs[0] * rel[0] * time[0] + lhs[1] * rel[1] * time[0] +
-            lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1],
-            lhs[1] * rel[0] * time[0] + lhs[0] * rel[1] * time[0] +
-            lhs[0] * rel[0] * time[1] + lhs[1] * rel[1] * time[1]
-        ], 1)
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
+        time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
+
+        # compute <h, r, T, t_conj> ==> 4**4 / 2 
+        # h * r
+        A =   lhs[0]*rel[0]+ lhs[1]*rel[1]+ lhs[2]*rel[2]- lhs[3]*rel[3] # scalar
+        B =   lhs[0]*rel[1]+ lhs[1]*rel[0]- lhs[2]*rel[3]+ lhs[3]*rel[2] # e1
+        C =   lhs[0]*rel[2]+ lhs[2]*rel[0]+ lhs[1]*rel[3]- lhs[3]*rel[1]  # e2
+        D =   lhs[1]*rel[2]- lhs[2]*rel[1]+ lhs[0]*rel[3]+ lhs[3]*rel[0] # e1e2
+        # (h*r) * time, note that we first change the +- sign for easier dot product later
+        W =   A * time[0]+ B * time[1]+ C * time[2]- D * time[3] # scalar
+        X = - A * time[1]- B * time[0]+ C * time[3]- D * time[2] # e1
+        Y = - A * time[2]- C * time[0]- B * time[3]+ D * time[1] # e2
+        Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
+
+        return torch.cat([W,X,Y,Z], 1)
