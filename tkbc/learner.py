@@ -68,7 +68,8 @@ model = {
     'ComplEx': ComplEx(sizes, args.rank),
     'TComplEx': TComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
     'TNTComplEx': TNTComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-    'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb)
+    'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb),
+    'TGeomE2': TGeomE2(sizes, args.rank)
 }[args.model]
 model = model.cuda()
 
