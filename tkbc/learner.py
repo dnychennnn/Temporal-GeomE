@@ -61,72 +61,137 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-dataset = TemporalDataset(args.dataset)
+def avg_both(mrrs: Dict[str, float], hits: Dict[str, torch.FloatTensor]):
+            """
+            aggregate metrics for missing lhs and rhs
+            :param mrrs: d
+            :param hits:
+            :return:
+            """
+            m = (mrrs['lhs'] + mrrs['rhs']) / 2.
+            h = (hits['lhs'] + hits['rhs']) / 2.
+            return {'MRR': m, 'hits@[1,3,10]': h}
 
-sizes = dataset.get_shape()
-model = {
-    'ComplEx': ComplEx(sizes, args.rank),
-    'TComplEx': TComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-    'TNTComplEx': TNTComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-    'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb),
-    'TGeomE2': TGeomE2(sizes, args.rank)
-}[args.model]
-model = model.cuda()
+def learn(model=args.model,
+          dataset=args.dataset,
+          rank=args.rank,
+          learning_rate = args.learning_rate,
+          batch_size = args.batch_size, 
+          emb_reg=args.emb_reg, 
+          time_reg=args.time_reg):
+
+    dataset = TemporalDataset(args.dataset)
+
+    sizes = dataset.get_shape()
+    model = {
+        'ComplEx': ComplEx(sizes, args.rank),
+        'TComplEx': TComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
+        'TNTComplEx': TNTComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
+        'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb),
+        'TGeomE2': TGeomE2(sizes, args.rank)
+    }[args.model]
+    model = model.cuda()
 
 
-opt = optim.Adagrad(model.parameters(), lr=args.learning_rate)
+    opt = optim.Adagrad(model.parameters(), lr=args.learning_rate)
 
-emb_reg = N3(args.emb_reg)
-time_reg = Lambda3(args.time_reg)
+    emb_reg = N3(args.emb_reg)
+    time_reg = Lambda3(args.time_reg)
+    
+    # Results related
+    os.makedirs(PATH)
+    patience = 0
+    mrr_std = 0
+    cur_loss = 0
+    curve = {'train': [], 'valid': [], 'test': []}
 
-for epoch in range(args.max_epochs):
-    examples = torch.from_numpy(
-        dataset.get_train().astype('int64')
-    )
-
-    model.train()
-    if dataset.has_intervals():
-        optimizer = IKBCOptimizer(
-            model, emb_reg, time_reg, opt, dataset,
-            batch_size=args.batch_size
+    for epoch in range(args.max_epochs):
+        examples = torch.from_numpy(
+            dataset.get_train().astype('int64')
         )
-        optimizer.epoch(examples)
 
-    else:
-        optimizer = TKBCOptimizer(
-            model, emb_reg, time_reg, opt,
-            batch_size=args.batch_size
-        )
-        optimizer.epoch(examples)
-
-
-    def avg_both(mrrs: Dict[str, float], hits: Dict[str, torch.FloatTensor]):
-        """
-        aggregate metrics for missing lhs and rhs
-        :param mrrs: d
-        :param hits:
-        :return:
-        """
-        m = (mrrs['lhs'] + mrrs['rhs']) / 2.
-        h = (hits['lhs'] + hits['rhs']) / 2.
-        return {'MRR': m, 'hits@[1,3,10]': h}
-
-    if epoch < 0 or (epoch + 1) % args.valid_freq == 0:
+        model.train()
         if dataset.has_intervals():
-            valid, test, train = [
-                dataset.eval(model, split, -1 if split != 'train' else 50000)
-                for split in ['valid', 'test', 'train']
-            ]
-            print("valid: ", valid)
-            print("test: ", test)
-            print("train: ", train)
+            optimizer = IKBCOptimizer(
+                model, emb_reg, time_reg, opt, dataset,
+                batch_size=args.batch_size
+            )
+            optimizer.epoch(examples)
 
         else:
-            valid, test, train = [
-                avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000))
-                for split in ['valid', 'test', 'train']
-            ]
-            print("valid: ", valid['MRR'])
-            print("test: ", test['MRR'])
-            print("train: ", train['MRR'])
+            optimizer = TKBCOptimizer(
+                model, emb_reg, time_reg, opt,
+                batch_size=args.batch_size
+            )
+            optimizer.epoch(examples)
 
+        
+        if epoch < 0 or (epoch + 1) % args.valid_freq == 0:
+            if dataset.has_intervals():
+                valid, test, train = [
+                    dataset.eval(model, split, -1 if split != 'train' else 50000)
+                    for split in ['valid', 'test', 'train']
+                ]
+                print("valid: ", valid)
+                print("test: ", test)
+                print("train: ", train)
+
+            else:
+                valid, test, train = [
+                    avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000))
+                    for split in ['valid', 'test', 'train']
+                ]
+                print("valid: ", valid['MRR'])
+                print("test: ", test['MRR'])
+                print("train: ", train['MRR'])
+
+            # Save results
+
+            f = open(os.path.join(PATH, 'result.txt'), 'w+')
+            f.write("\n VALID: ")
+            f.write(str(valid))
+            f.close()
+            # early-stop with patience
+            mrr_valid = valid['MRR']
+            if mrr_valid < mrr_std:
+               patience += 1
+               if patience >= 3:
+                  break
+            else:
+               patience = 0
+               mrr_std = mrr_valid
+               torch.save(model.state_dict(), os.path.join(PATH, modelname+'.pkl'))
+
+            curve['valid'].append(valid)
+            # curve['test'].append(test)
+            curve['train'].append(train)
+    
+            print("\t TRAIN: ", train)
+            print("\t VALID : ", valid)
+
+    model.load_state_dict(torch.load(os.path.join(PATH, modelname+'.pkl')))
+    results = avg_both(*dataset.eval(model, 'test', -1))
+    print("\n\nTEST : ", results)
+    f = open(os.path.join(PATH, 'result.txt'), 'w+')
+    f.write("\n\nTEST : ")
+    f.write(str(results))
+    f.close()
+
+if __name__ == '__main__':
+
+
+    ## tune parameters here
+    for rank in [1000]:
+        for lr in [0.1]:
+            for batch_size in [1000]:
+                for model in ['TGeomE2']:
+                    for emb_reg in [0.1,0.11,0.09]:
+                        for time_reg in [0.01, 1]:
+                            for dataset in ['WN18RR']:
+                                learn(  model=args.model,
+                                        dataset=args.dataset,
+                                        rank=args.rank,
+                                        learning_rate = args.learning_rate,
+                                        batch_size = args.batch_size, 
+                                        emb_reg=args.emb_reg, 
+                                        time_reg=args.time_reg)
