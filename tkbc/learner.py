@@ -83,7 +83,7 @@ def learn(model=args.model,
           learning_rate = args.learning_rate,
           batch_size = args.batch_size, 
           emb_reg=args.emb_reg, 
-          time_reg=args.time_reg
+          time_reg=args.time_reg,
           time_granularity=args.time_granularity):
 
     root = 'results/'+ dataset +'/' + model
