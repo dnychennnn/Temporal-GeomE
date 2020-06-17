@@ -199,7 +199,7 @@ if __name__ == '__main__':
                 for model in ['TGeomE2']:
                     for emb_reg in [0.1,0.11,0.09]:
                         for time_reg in [0.01, 1]:
-                            for time_granularity in [1, 2]
+                            for time_granularity in [1, 2]:
                                 for dataset in ['ICEWS14', 'ICEWS05-15', 'yago15k']:
                                     learn(  model=model,
                                             dataset=dataset,
