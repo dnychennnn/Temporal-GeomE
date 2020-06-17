@@ -58,6 +58,10 @@ parser.add_argument(
     '--no_time_emb', default=False, action="store_true",
     help="Use a specific embedding for non temporal relations"
 )
+parser.add_argument(
+    '--time_granularity', default=1, type=int, 
+    help="Time granularity for time embeddings"
+)
 
 
 args = parser.parse_args()
@@ -79,7 +83,8 @@ def learn(model=args.model,
           learning_rate = args.learning_rate,
           batch_size = args.batch_size, 
           emb_reg=args.emb_reg, 
-          time_reg=args.time_reg):
+          time_reg=args.time_reg
+          time_granularity=args.time_granularity):
 
     root = 'results/'+ dataset +'/' + model
     modelname = model
@@ -94,8 +99,8 @@ def learn(model=args.model,
         'ComplEx': ComplEx(sizes, args.rank),
         'TComplEx': TComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
         'TNTComplEx': TNTComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-        'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb),
-        'TGeomE2': TGeomE2(sizes, args.rank)
+        'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb, args.time_granularity=time_granularity),
+        'TGeomE2': TGeomE2(sizes, args.rank, time_granularity=args.time_granularity)
     }[args.model]
     model = model.cuda()
 
@@ -194,11 +199,13 @@ if __name__ == '__main__':
                 for model in ['TGeomE2']:
                     for emb_reg in [0.1,0.11,0.09]:
                         for time_reg in [0.01, 1]:
-                            for dataset in ['ICEWS14', 'ICEWS05-15', 'yago15k']:
-                                learn(  model=args.model,
-                                        dataset=args.dataset,
-                                        rank=args.rank,
-                                        learning_rate = args.learning_rate,
-                                        batch_size = args.batch_size, 
-                                        emb_reg=args.emb_reg, 
-                                        time_reg=args.time_reg)
+                            for time_granularity in [1, 2]
+                                for dataset in ['ICEWS14', 'ICEWS05-15', 'yago15k']:
+                                    learn(  model=model,
+                                            dataset=dataset,
+                                            rank=rank,
+                                            learning_rate = learning_rate,
+                                            batch_size = batch_size, 
+                                            emb_reg=emb_reg, 
+                                            time_reg=time_reg,
+                                            time_granularity=time_granularity)
