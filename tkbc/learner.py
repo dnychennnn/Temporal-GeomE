@@ -10,6 +10,7 @@ from datasets import TemporalDataset
 from optimizers import TKBCOptimizer, IKBCOptimizer
 from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2
 from regularizers import N3, Lambda3
+import os
 
 parser = argparse.ArgumentParser(
     description="Temporal ComplEx"
