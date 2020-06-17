@@ -492,6 +492,7 @@ class TGeomE1(TKBCModel):
         
 
         self.no_time_emb = no_time_emb
+        self.time_granularity = time_granularity
 
     @staticmethod
     def has_time():
@@ -501,7 +502,7 @@ class TGeomE1(TKBCModel):
         lhs = self.embeddings[0](x[:, 0])
         rel = self.embeddings[1](x[:, 1])
         rhs = self.embeddings[0](x[:, 2])
-        time = self.embeddings[2](x[:, 3]) / time_granularity
+        time = self.embeddings[2](x[:, 3]) / self.time_granularity
 
         lhs = lhs[:, :self.rank], lhs[:, self.rank:]
         rel = rel[:, :self.rank], rel[:, self.rank:]
@@ -520,7 +521,7 @@ class TGeomE1(TKBCModel):
         lhs = self.embeddings[0](x[:, 0])
         rel = self.embeddings[1](x[:, 1])
         rhs = self.embeddings[0](x[:, 2])
-        time = self.embeddings[2](x[:, 3]) / time_granularity
+        time = self.embeddings[2](x[:, 3]) / self.time_granularity
 
         lhs = lhs[:, :self.rank], lhs[:, self.rank:]
         rel = rel[:, :self.rank], rel[:, self.rank:]
@@ -568,7 +569,7 @@ class TGeomE1(TKBCModel):
     def get_queries(self, queries: torch.Tensor):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
-        time = self.embeddings[2](queries[:, 3]) / time_granularity
+        time = self.embeddings[2](queries[:, 3]) / self.time_granularity
         lhs = lhs[:, :self.rank], lhs[:, self.rank:]
         rel = rel[:, :self.rank], rel[:, self.rank:]
         time = time[:, :self.rank], time[:, self.rank:]
@@ -610,6 +611,8 @@ class TGeomE2(TKBCModel):
 
         self.no_time_emb = no_time_emb
 
+        self.time_granularity = time_granularity
+
     @staticmethod
     def has_time():
         return True
@@ -619,7 +622,7 @@ class TGeomE2(TKBCModel):
         lhs = self.embeddings[0](x[:, 0])
         rel = self.embeddings[1](x[:, 1])
         rhs = self.embeddings[0](x[:, 2])
-        time = self.embeddings[2](x[:, 3]) / time_granularity
+        time = self.embeddings[2](x[:, 3]) / self.time_granularity
 
         lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
         rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
@@ -644,7 +647,7 @@ class TGeomE2(TKBCModel):
         lhs = self.embeddings[0](x[:, 0])
         rel = self.embeddings[1](x[:, 1])
         rhs = self.embeddings[0](x[:, 2])
-        time = self.embeddings[2](x[:, 3]) / time_granularity
+        time = self.embeddings[2](x[:, 3]) / self.time_granularity
 
         lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
         rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
@@ -718,7 +721,7 @@ class TGeomE2(TKBCModel):
     def get_queries(self, queries: torch.Tensor):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
-        time = self.embeddings[2](queries[:, 3]) / time_granularity
+        time = self.embeddings[2](queries[:, 3]) / self.time_granularity
         lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:]
         rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
         time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
