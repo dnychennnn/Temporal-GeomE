@@ -487,8 +487,8 @@ class TGeomE1(TKBCModel):
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
 
-        self.embeddings[0].weight.data[:,self.rank:] *= 0
-        self.embeddings[0].weight.data[:,self.rank:] *= 0
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
         
 
         self.no_time_emb = no_time_emb
@@ -605,8 +605,8 @@ class TGeomE2(TKBCModel):
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
 
-        self.embeddings[0].weight.data[:,self.rank:] *= 0
-        self.embeddings[0].weight.data[:,self.rank:] *= 0
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
         
 
         self.no_time_emb = no_time_emb
