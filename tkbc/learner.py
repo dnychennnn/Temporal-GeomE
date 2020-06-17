@@ -97,10 +97,10 @@ def learn(model=args.model,
     sizes = dataset.get_shape()
     model = {
         'ComplEx': ComplEx(sizes, args.rank),
-        'TComplEx': TComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-        'TNTComplEx': TNTComplEx(sizes, args.rank, no_time_emb=args.no_time_emb),
-        'TGeomE1': TGeomE1(sizes, args.rank, no_time_emb=args.no_time_emb, args.time_granularity=time_granularity),
-        'TGeomE2': TGeomE2(sizes, args.rank, time_granularity=args.time_granularity)
+        'TComplEx': TComplEx(sizes, rank, no_time_emb=no_time_emb),
+        'TNTComplEx': TNTComplEx(sizes, rank, no_time_emb=no_time_emb),
+        'TGeomE1': TGeomE1(sizes, rank, no_time_emb=no_time_emb, time_granularity=time_granularity),
+        'TGeomE2': TGeomE2(sizes, rank, time_granularity=time_granularity)
     }[args.model]
     model = model.cuda()
 
