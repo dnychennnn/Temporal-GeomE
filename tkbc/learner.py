@@ -88,12 +88,13 @@ def learn(model=args.model,
 
     root = 'results/'+ dataset +'/' + model
     modelname = model
-    
+    datasetname = dataset
+
     ##restore model parameters and results
     PATH=os.path.join(root,'rank{:.0f}/lr{:.4f}/batch{:.0f}/time_granularity{:02d}/emb_reg{:.5f}/time_reg{:.5f}'.format(rank,learning_rate,batch_size, time_granularity, emb_reg,time_reg))
-
-    dataset = TemporalDataset(args.dataset)
-
+    
+    dataset = TemporalDataset(dataset)
+    
     sizes = dataset.get_shape()
     model = {
         'ComplEx': ComplEx(sizes, args.rank),
@@ -101,14 +102,14 @@ def learn(model=args.model,
         'TNTComplEx': TNTComplEx(sizes, rank, no_time_emb=args.no_time_emb),
         'TGeomE1': TGeomE1(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity),
         'TGeomE2': TGeomE2(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity)
-    }[args.model]
+    }[model]
     model = model.cuda()
 
 
-    opt = optim.Adagrad(model.parameters(), lr=args.learning_rate)
+    opt = optim.Adagrad(model.parameters(), lr=learning_rate)
 
-    emb_reg = N3(args.emb_reg)
-    time_reg = Lambda3(args.time_reg)
+    emb_reg = N3(emb_reg)
+    time_reg = Lambda3(time_reg)
     
     # Results related
     os.makedirs(PATH)
@@ -117,7 +118,10 @@ def learn(model=args.model,
     cur_loss = 0
     curve = {'train': [], 'valid': [], 'test': []}
 
+
+    print("Start training process: ", modelname, "on", datasetname)
     for epoch in range(args.max_epochs):
+        print("[ Epoch:", epoch, "]")
         examples = torch.from_numpy(
             dataset.get_train().astype('int64')
         )
@@ -126,14 +130,14 @@ def learn(model=args.model,
         if dataset.has_intervals():
             optimizer = IKBCOptimizer(
                 model, emb_reg, time_reg, opt, dataset,
-                batch_size=args.batch_size
+                batch_size=batch_size
             )
             optimizer.epoch(examples)
 
         else:
             optimizer = TKBCOptimizer(
                 model, emb_reg, time_reg, opt,
-                batch_size=args.batch_size
+                batch_size=batch_size
             )
             optimizer.epoch(examples)
 
