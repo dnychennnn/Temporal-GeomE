@@ -677,6 +677,7 @@ class TGeomE2(TKBCModel):
                ), (
                     torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
                     torch.sqrt(rel[0] ** 2 + rel[1] ** 2+ rel[2] ** 2+ rel[3] ** 2),
+		    torch.sqrt(time[0] ** 2 + time[1] ** 2+ time[2] ** 2+ time[3] ** 2),
                     torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
                ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
 
