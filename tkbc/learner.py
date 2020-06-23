@@ -119,7 +119,7 @@ def learn(model=args.model,
     curve = {'train': [], 'valid': [], 'test': []}
 
 
-    print("Start training process: ", modelname, "on", datasetname)
+    print("Start training process: ", modelname, "on", datasetname, using, "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
     for epoch in range(args.max_epochs):
         print("[ Epoch:", epoch, "]")
         examples = torch.from_numpy(
@@ -195,16 +195,19 @@ def learn(model=args.model,
 
 if __name__ == '__main__':
 
+    # set cuda device
+    torch.cuda.set_device(3)    
+
 
     ## tune parameters here
-    for rank in [1000]:
+    for rank in [156, 1000, 2000]:
         for lr in [0.1]:
             for batch_size in [1000]:
                 for model in ['TGeomE2']:
-                    for emb_reg in [0.1,0.11,0.09]:
-                        for time_reg in [0.01, 1]:
+                    for emb_reg in [0.01, 0.001, 0.005]:
+                        for time_reg in [0]:
                             for time_granularity in [1]:
-                                for dataset in ['ICEWS14', 'ICEWS05-15', 'yago15k']:
+                                for dataset in ['ICEWS14']:
                                     learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,

@@ -4,3 +4,4 @@ build
 dist
 tkbc/src_data
 **/.nfs*
+results/
