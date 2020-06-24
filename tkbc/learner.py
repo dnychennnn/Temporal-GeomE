@@ -86,6 +86,9 @@ def learn(model=args.model,
           time_reg=args.time_reg,
           time_granularity=args.time_granularity):
 
+
+
+
     root = 'results/'+ dataset +'/' + model
     modelname = model
     datasetname = dataset
@@ -108,9 +111,11 @@ def learn(model=args.model,
 
     opt = optim.Adagrad(model.parameters(), lr=learning_rate)
 
+    print("Start training process: ", modelname, "on", datasetname, "using", "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
+
     emb_reg = N3(emb_reg)
     time_reg = Lambda3(time_reg)
-    
+  
     # Results related
     os.makedirs(PATH)
     patience = 0
@@ -119,7 +124,6 @@ def learn(model=args.model,
     curve = {'train': [], 'valid': [], 'test': []}
 
 
-    print("Start training process: ", modelname, "on", datasetname, using, "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
     for epoch in range(args.max_epochs):
         print("[ Epoch:", epoch, "]")
         examples = torch.from_numpy(
@@ -200,11 +204,11 @@ if __name__ == '__main__':
 
 
     ## tune parameters here
-    for rank in [156, 1000, 2000]:
+    for rank in [1000, 2000]:
         for lr in [0.1]:
             for batch_size in [1000]:
                 for model in ['TGeomE2']:
-                    for emb_reg in [0.01, 0.001, 0.005]:
+                    for emb_reg in [0.001, 0.0005, 0.0001]:
                         for time_reg in [0]:
                             for time_granularity in [1]:
                                 for dataset in ['ICEWS14']:
