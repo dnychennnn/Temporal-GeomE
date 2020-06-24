@@ -628,7 +628,7 @@ class TGeomE2(TKBCModel):
         rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
         time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
 
-        # compute <h, r, T, t_conj> ==> 4**4 / 2 
+        # compute <h, r, T, t_conj> ==> 4**3
         # h * r
         A =   lhs[0]*rel[0]+ lhs[1]*rel[1]+ lhs[2]*rel[2]- lhs[3]*rel[3] # scalar
         B =   lhs[0]*rel[1]+ lhs[1]*rel[0]- lhs[2]*rel[3]+ lhs[3]*rel[2] # e1
@@ -639,8 +639,26 @@ class TGeomE2(TKBCModel):
         X = - A * time[1]- B * time[0]+ C * time[3]- D * time[2] # e1
         Y = - A * time[2]- C * time[0]- B * time[3]+ D * time[1] # e2
         Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
-
+	
+	
+	## compute <h, r, T, t_conj> ==> 4**3
+	## full_rel = r * time
+        # A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]- rel[3]*time[3] # scalar
+        # B =   rel[0]*time[1]+ rel[1]*time[0]- rel[2]*time[3]+ rel[3]*time[2] # e1
+        # C =   rel[0]*time[2]+ rel[2]*time[0]+ rel[1]*time[3]- rel[3]*time[1]  # e2
+        # D =   rel[1]*time[2]- rel[2]*time[1]+ rel[0]*time[3]+ rel[3]*time[0] # e1e2
+	# full_rel = A,B,C,D
+	## h * full_rel, note that we do not change +- sign here, thus we need do that later
+	# W =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]- lhs[3]*full_rel[3] # scalar
+        # X =   lhs[0]*full_rel[1]+ lhs[1]*full_rel[0]- lhs[2]*full_rel[3]+ lhs[3]*full_rel[2] # e1
+        # Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
+        # Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
+	
+	
+	
         return torch.sum(W*rhs[0] + X * rhs[1] + Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
+        ## return h * full_rel * t_conj, note that here the signs before X and Y are -
+	# return torch.sum(W*rhs[0] - X * rhs[1] - Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
 
     def forward(self, x):
         lhs = self.embeddings[0](x[:, 0])
@@ -665,6 +683,20 @@ class TGeomE2(TKBCModel):
         X = - A * time[1]- B * time[0]+ C * time[3]- D * time[2] # e1
         Y = - A * time[2]- C * time[0]- B * time[3]+ D * time[1] # e2
         Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
+	
+	
+	## compute <h, r, T, t_conj> ==> 4**3
+	## full_rel = r * time
+        # A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]- rel[3]*time[3] # scalar
+        # B =   rel[0]*time[1]+ rel[1]*time[0]- rel[2]*time[3]+ rel[3]*time[2] # e1
+        # C =   rel[0]*time[2]+ rel[2]*time[0]+ rel[1]*time[3]- rel[3]*time[1]  # e2
+        # D =   rel[1]*time[2]- rel[2]*time[1]+ rel[0]*time[3]+ rel[3]*time[0] # e1e2
+	# full_rel = A,B,C,D
+	## h * full_rel, note that we do not change +- sign here, thus we need do that later
+	# W =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]- lhs[3]*full_rel[3] # scalar
+        # X =   lhs[0]*full_rel[1]+ lhs[1]*full_rel[0]- lhs[2]*full_rel[3]+ lhs[3]*full_rel[2] # e1
+        # Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
+        # Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
 
         to_score = self.embeddings[0].weight
         to_score = to_score[:, :self.rank], to_score[:, self.rank:self.rank*2], to_score[:, self.rank*2:self.rank*3], to_score[:, self.rank*3:]
@@ -680,6 +712,17 @@ class TGeomE2(TKBCModel):
 		    torch.sqrt(time[0] ** 2 + time[1] ** 2+ time[2] ** 2+ time[3] ** 2),
                     torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
                ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
+##        note that the signs before X and Y are -
+#         return (
+#                     W @ to_score[0].transpose(0, 1) -
+#                     X @ to_score[1].transpose(0, 1) -
+#                     Y @ to_score[2].transpose(0, 1) +
+#                     Z @ to_score[3].transpose(0, 1)
+#                ), (
+#                     torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
+#                     torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2),
+#                     torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
+#                ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
 
     def forward_over_time(self, x):
         lhs = self.embeddings[0](x[:, 0])
