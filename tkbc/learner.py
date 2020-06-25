@@ -84,7 +84,9 @@ def learn(model=args.model,
           batch_size = args.batch_size, 
           emb_reg=args.emb_reg, 
           time_reg=args.time_reg,
-          time_granularity=args.time_granularity):
+          time_granularity=args.time_granularity,
+          epoch_pretrain = 10
+         ):
 
 
 
@@ -149,7 +151,7 @@ def learn(model=args.model,
                 model, emb_reg, time_reg, opt_pretrain,
                 batch_size=batch_size
             )
-            if epoch > epoch_pretain:
+            if epoch >= epoch_pretain:
                 optimizer.epoch(examples,pre_train=False)
             else:
                 optimizer_pretrain.epoch(examples,pre_train=True)
@@ -221,11 +223,14 @@ if __name__ == '__main__':
                         for time_reg in [0]:
                             for time_granularity in [1]:
                                 for dataset in ['ICEWS14']:
-                                    learn(  model=model,
+                                    for epoch_pretrain in [10]:
+                                        learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,
                                             learning_rate = lr,
                                             batch_size = batch_size, 
                                             emb_reg=emb_reg, 
                                             time_reg=time_reg,
-                                            time_granularity=time_granularity)
+                                            time_granularity=time_granularity,
+                                              epoch_pretrain = epoch_pretrain
+                                             )
