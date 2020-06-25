@@ -110,7 +110,9 @@ def learn(model=args.model,
 
 
     opt = optim.Adagrad(model.parameters(), lr=learning_rate)
+    opt_pretrain = optim.Adagrad(model.parameters(), lr=learning_rate/10)
 
+    
     print("Start training process: ", modelname, "on", datasetname, "using", "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
 
     emb_reg = N3(emb_reg)
@@ -143,7 +145,14 @@ def learn(model=args.model,
                 model, emb_reg, time_reg, opt,
                 batch_size=batch_size
             )
-            optimizer.epoch(examples)
+            optimizer_pretrain = TKBCOptimizer(
+                model, emb_reg, time_reg, opt_pretrain,
+                batch_size=batch_size
+            )
+            if epoch > epoch_pretain:
+                optimizer.epoch(examples,pre_train=False)
+            else:
+                optimizer_pretrain.epoch(examples,pre_train=True)
 
         
         if epoch < 0 or (epoch + 1) % args.valid_freq == 0:
