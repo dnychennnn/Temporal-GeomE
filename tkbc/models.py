@@ -591,7 +591,8 @@ class TGeomE2(TKBCModel):
     """
     def __init__(
             self, sizes: Tuple[int, int, int, int], rank: int,
-            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1
+            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1,
+	    pre_train: bool = True
 ):
         super(TGeomE2, self).__init__()
         self.sizes = sizes
@@ -604,9 +605,11 @@ class TGeomE2(TKBCModel):
         self.embeddings[0].weight.data *= init_size
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
-
-        # self.embeddings[0].weight.data[:,self.rank:] *= 0
-        # self.embeddings[0].weight.data[:,self.rank:] *= 0
+	
+	if self.pre_train:
+	    self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
+            self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
+            self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
         
 
         self.no_time_emb = no_time_emb
@@ -616,6 +619,7 @@ class TGeomE2(TKBCModel):
     @staticmethod
     def has_time():
         return True
+	
 
     def score(self, x):
 
@@ -660,6 +664,39 @@ class TGeomE2(TKBCModel):
         # return torch.sum(W*rhs[0] + X * rhs[1] + Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
         #  return h * full_rel * t_conj, note that here the signs before X and Y are -
 	    return torch.sum(W*rhs[0] - X * rhs[1] - Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
+	
+	
+	
+    def pretrain(self, x):
+        
+	lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        time = self.embeddings[2](x[:, 3])
+
+        lhs = lhs[:, :self.rank], lhs[:, self.rank*3:]
+        rel = rel[:, :self.rank], rel[:, self.rank*3:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank*3:]
+        time = time[:, :self.rank], time[:, self.rank*3:]
+
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank*3:]
+
+        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
+        full_rel = rt[0] - rt[3], rt[1] + rt[2]
+
+        return (
+                       (lhs[0] * full_rel[0] - lhs[1] * full_rel[1]) @ to_score[0].t() +
+                       (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ to_score[1].t()
+               ),(
+                       (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0].t() +
+                       (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1].t()
+	       ),(
+                   torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
+                   torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
+                   torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2)
+               ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
+
 
     def forward(self, x):
         lhs = self.embeddings[0](x[:, 0])
@@ -700,6 +737,11 @@ class TGeomE2(TKBCModel):
         X =   lhs[0]*full_rel[1]+ lhs[1]*full_rel[0]- lhs[2]*full_rel[3]+ lhs[3]*full_rel[2] # e1
         Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
         Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
+	
+	W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
+        X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
+        Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
+        Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
 
         to_score = self.embeddings[0].weight
         to_score = to_score[:, :self.rank], to_score[:, self.rank:self.rank*2], to_score[:, self.rank*2:self.rank*3], to_score[:, self.rank*3:]
@@ -722,7 +764,12 @@ class TGeomE2(TKBCModel):
                     X @ to_score[1].transpose(0, 1) -
                     Y @ to_score[2].transpose(0, 1) +
                     Z @ to_score[3].transpose(0, 1)
-               ), (
+               ),(
+                    W1 @ to_score[0].transpose(0, 1) +
+                    X1 @ to_score[1].transpose(0, 1) +
+                    Y1 @ to_score[2].transpose(0, 1) +
+                    Z1 @ to_score[3].transpose(0, 1)
+               ),(
                     torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
                     torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2),
                     torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
