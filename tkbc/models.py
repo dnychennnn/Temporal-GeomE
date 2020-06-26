@@ -50,7 +50,6 @@ class TKBCModel(nn.Module, ABC):
                 while b_begin < len(queries):
                     these_queries = queries[b_begin:b_begin + batch_size]
                     q = self.get_queries(these_queries)
-
                     scores = q @ rhs
                     targets = self.score(these_queries)
                     assert not torch.any(torch.isinf(scores)), "inf scores"
@@ -605,9 +604,11 @@ class TGeomE2(TKBCModel):
         self.embeddings[0].weight.data *= init_size
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
+        
+        self.pre_train = pre_train
 	
-	if self.pre_train:
-	    self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
+        if self.pre_train:
+            self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
             self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
             self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
         
@@ -654,7 +655,7 @@ class TGeomE2(TKBCModel):
 	    
         full_rel = A,B,C,D
 	    ## h * full_rel, note that we do not change +- sign here, thus we need do that later
-    	W =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]- lhs[3]*full_rel[3] # scalar
+        W =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]- lhs[3]*full_rel[3] # scalar
         X =   lhs[0]*full_rel[1]+ lhs[1]*full_rel[0]- lhs[2]*full_rel[3]+ lhs[3]*full_rel[2] # e1
         Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
         Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
@@ -663,13 +664,13 @@ class TGeomE2(TKBCModel):
 	
         # return torch.sum(W*rhs[0] + X * rhs[1] + Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
         #  return h * full_rel * t_conj, note that here the signs before X and Y are -
-	    return torch.sum(W*rhs[0] - X * rhs[1] - Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
+        return torch.sum(W*rhs[0] - X * rhs[1] - Y * rhs[2] + Z * rhs[3], 1, keepdim=True)
 	
 	
 	
     def pretrain(self, x):
         
-	lhs = self.embeddings[0](x[:, 0])
+        lhs = self.embeddings[0](x[:, 0])
         rel = self.embeddings[1](x[:, 1])
         rhs = self.embeddings[0](x[:, 2])
         time = self.embeddings[2](x[:, 3])
@@ -738,7 +739,7 @@ class TGeomE2(TKBCModel):
         Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
         Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
 	
-	W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
+        W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
         X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
         Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
         Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]

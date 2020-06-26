@@ -33,11 +33,10 @@ class TKBCOptimizer(object):
                 input_batch = actual_examples[
                     b_begin:b_begin + self.batch_size
                 ].cuda()
-                if pretrain:
+                if pre_train:
                     predictions, predictions_l, factors, time = self.model.pretrain(input_batch)
                 else:
                     predictions, predictions_l, factors, time = self.model.forward(input_batch)
-                
                 truth = input_batch[:, 2]
                 truth_l = input_batch[:, 0]
 
@@ -48,7 +47,7 @@ class TKBCOptimizer(object):
                 if time is not None:
                     l_time = self.temporal_regularizer.forward(time)
                 l = (l_fit+l_fit_l)/2 + l_reg + l_time
-
+                
                 self.optimizer.zero_grad()
                 l.backward()
                 self.optimizer.step()

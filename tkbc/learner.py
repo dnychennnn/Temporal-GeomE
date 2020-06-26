@@ -151,7 +151,7 @@ def learn(model=args.model,
                 model, emb_reg, time_reg, opt_pretrain,
                 batch_size=batch_size
             )
-            if epoch >= epoch_pretain:
+            if epoch >= epoch_pretrain:
                 optimizer.epoch(examples,pre_train=False)
             else:
                 optimizer_pretrain.epoch(examples,pre_train=True)
@@ -215,12 +215,12 @@ if __name__ == '__main__':
 
 
     ## tune parameters here
-    for rank in [1000, 2000]:
+    for rank in [2000]:
         for lr in [0.1]:
             for batch_size in [1000]:
                 for model in ['TGeomE2']:
-                    for emb_reg in [0.001, 0.0005, 0.0001]:
-                        for time_reg in [0]:
+                    for emb_reg in [0.001, 0.01]:
+                        for time_reg in [0.01]:
                             for time_granularity in [1]:
                                 for dataset in ['ICEWS14']:
                                     for epoch_pretrain in [10]:
