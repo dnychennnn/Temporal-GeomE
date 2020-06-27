@@ -610,7 +610,7 @@ class TGeomE2(TKBCModel):
         if self.pre_train:
             self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
             self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
-            self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
+      #      self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
         
 
         self.no_time_emb = no_time_emb
@@ -687,11 +687,11 @@ class TGeomE2(TKBCModel):
         full_rel = rt[0] - rt[3], rt[1] + rt[2]
 
         return (
-                       (lhs[0] * full_rel[0] - lhs[1] * full_rel[1]) @ to_score[0] +
-                       (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ to_score[1]
-               ),(
-                       (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0] +
-                       (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1]
+                       (lhs[0] * full_rel[0] - lhs[1] * full_rel[1]) @ to_score[0].t() +
+                       (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ to_score[1].t()
+               ),(.
+                       (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0].t() +
+                       (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1].t()
 	       ),(
                    torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
                    torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
