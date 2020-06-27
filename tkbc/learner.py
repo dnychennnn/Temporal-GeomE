@@ -110,9 +110,12 @@ def learn(model=args.model,
     }[model]
     model = model.cuda()
 
-
-    opt = optim.Adagrad(model.parameters(), lr=learning_rate)
-    opt_pretrain = optim.Adagrad(model.parameters(), lr=learning_rate/10)
+    if pretrain > 0:
+        opt = optim.Adagrad(model.parameters(), lr=learning_rate)
+    else:
+        opt = optim.Adagrad(model.parameters(), lr=learning_rate/10)
+    opt_pretrain = optim.Adagrad(model.parameters(), lr=learning_rate)
+    
 
     
     print("Start training process: ", modelname, "on", datasetname, "using", "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
