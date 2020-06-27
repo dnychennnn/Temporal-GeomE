@@ -50,8 +50,16 @@ class TKBCModel(nn.Module, ABC):
                 while b_begin < len(queries):
                     these_queries = queries[b_begin:b_begin + batch_size]
                     q = self.get_queries(these_queries)
-                    scores = q @ rhs
-                    targets = self.score(these_queries)
+			
+                    lhs_queries = torch.ones(these_queries.size()).long().cuda()
+                    lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
+                    lhs_queries[:,0] = these_queries[:,2]
+                    lhs_queries[:,2] = these_queries[:,0]
+		    lhs_queries[:,3] = these_queries[:,3]
+		    q_lhs = self.get_lhs_queries(lhs_queries)
+			
+                    scores = q @ rhs +  q_lhs @ rhs
+                    targets = self.score(these_queries) + self.score(lhs_queries)
                     assert not torch.any(torch.isinf(scores)), "inf scores"
                     assert not torch.any(torch.isnan(scores)), "nan scores"
                     assert not torch.any(torch.isinf(targets)), "inf targets"
@@ -835,3 +843,29 @@ class TGeomE2(TKBCModel):
         Z =   B * time[2]- C * time[1]+ A * time[3]+ D * time[0] # e1e2
 
         return torch.cat([W,X,Y,Z], 1)
+
+    def get_lhs_queries(self, queries: torch.Tensor):
+        rhs = self.embeddings[0](queries[:, 2])
+        rel = self.embeddings[1](queries[:, 1])
+	time = self.embeddings[2](queries[:, 3] // self.time_granularity)
+	
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
+        time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
+	
+	        # compute <h, r, T, t_conj> ==> 4**3
+        # full_rel = r * time
+        A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]- rel[3]*time[3] # scalar
+        B =   rel[0]*time[1]+ rel[1]*time[0]- rel[2]*time[3]+ rel[3]*time[2] # e1
+        C =   rel[0]*time[2]+ rel[2]*time[0]+ rel[1]*time[3]- rel[3]*time[1]  # e2
+        D =   rel[1]*time[2]- rel[2]*time[1]+ rel[0]*time[3]+ rel[3]*time[0] # e1e2
+
+        full_rel = A,B,C,D
+        
+        # h * full_rel
+	
+        W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
+        X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
+        Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
+        Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
+        return torch.cat([W1,X1,Y1,Z1, 1)
