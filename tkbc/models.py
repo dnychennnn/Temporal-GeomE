@@ -609,7 +609,7 @@ class TGeomE2(TKBCModel):
 	
         if self.pre_train:
             self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
-            self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
+      #      self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
       #      self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
         
 
