@@ -110,7 +110,7 @@ def learn(model=args.model,
     }[model]
     model = model.cuda()
 
-    if pretrain > 0:
+    if epoch_pretrain > 0:
         opt = optim.Adagrad(model.parameters(), lr=learning_rate)
     else:
         opt = optim.Adagrad(model.parameters(), lr=learning_rate/10)
