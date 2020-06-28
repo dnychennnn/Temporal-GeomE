@@ -62,6 +62,10 @@ parser.add_argument(
     '--time_granularity', default=1, type=int, 
     help="Time granularity for time embeddings"
 )
+parser.add_argument(
+    '--use_gpu', default=0, type=int,
+    help="Use specific GPU for training."
+)
 
 
 args = parser.parse_args()
@@ -96,7 +100,7 @@ def learn(model=args.model,
     datasetname = dataset
 
     ##restore model parameters and results
-    PATH=os.path.join(root,'rank{:.0f}/lr{:.4f}/batch{:.0f}/time_granularity{:02d}/emb_reg{:.5f}/time_reg{:.5f}'.format(rank,learning_rate,batch_size, time_granularity, emb_reg,time_reg))
+    PATH=os.path.join(root,'rank{:.0f}/lr{:.4f}/batch{:.0f}/time_granularity{:02d}/emb_reg{:.5f}/time_reg{:.5f}/epoch_pretrain{:.5f}'.format(rank,learning_rate,batch_size, time_granularity, emb_reg, time_reg, epoch_pretrain))
     
     dataset = TemporalDataset(dataset)
     
@@ -190,6 +194,7 @@ def learn(model=args.model,
             if mrr_valid < mrr_std:
                patience += 1
                if patience >= 3:
+                  print("Early stopping ...")
                   break
             else:
                patience = 0
@@ -214,7 +219,7 @@ def learn(model=args.model,
 if __name__ == '__main__':
 
     # set cuda device
-    torch.cuda.set_device(3)    
+    torch.cuda.set_device(args.use_gpu)    
 
 
     ## tune parameters here
@@ -222,11 +227,11 @@ if __name__ == '__main__':
         for lr in [0.1]:
             for batch_size in [1000]:
                 for model in ['TGeomE2']:
-                    for emb_reg in [0.001, 0.01]:
+                    for emb_reg in [0.01]:
                         for time_reg in [0.01]:
                             for time_granularity in [1]:
                                 for dataset in ['ICEWS14']:
-                                    for epoch_pretrain in [10]:
+                                    for epoch_pretrain in [100]:
                                         learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,

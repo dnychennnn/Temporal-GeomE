@@ -55,9 +55,9 @@ class TKBCModel(nn.Module, ABC):
                     lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
                     lhs_queries[:,0] = these_queries[:,2]
                     lhs_queries[:,2] = these_queries[:,0]
-		    lhs_queries[:,3] = these_queries[:,3]
-		    q_lhs = self.get_lhs_queries(lhs_queries)
-			
+                    lhs_queries[:,3] = these_queries[:,3]
+                    q_lhs = self.get_lhs_queries(lhs_queries)
+
                     scores = q @ rhs +  q_lhs @ rhs
                     targets = self.score(these_queries) + self.score(lhs_queries)
                     assert not torch.any(torch.isinf(scores)), "inf scores"
@@ -697,7 +697,7 @@ class TGeomE2(TKBCModel):
         return (
                        (lhs[0] * full_rel[0] - lhs[1] * full_rel[1]) @ to_score[0].t() +
                        (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ to_score[1].t()
-               ),(.
+               ),(
                        (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0].t() +
                        (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1].t()
 	       ),(
@@ -847,7 +847,7 @@ class TGeomE2(TKBCModel):
     def get_lhs_queries(self, queries: torch.Tensor):
         rhs = self.embeddings[0](queries[:, 2])
         rel = self.embeddings[1](queries[:, 1])
-	time = self.embeddings[2](queries[:, 3] // self.time_granularity)
+        time = self.embeddings[2](queries[:, 3] // self.time_granularity)
 	
         rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:]
         rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
@@ -868,4 +868,4 @@ class TGeomE2(TKBCModel):
         X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
         Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
         Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
-        return torch.cat([W1,X1,Y1,Z1, 1)
+        return torch.cat([W1,X1,Y1,Z1], 1)
