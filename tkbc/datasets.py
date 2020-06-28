@@ -82,7 +82,7 @@ class TemporalDataset(object):
 
     def eval(
             self, model: TKBCModel, split: str, n_queries: int = -1, missing_eval: str = 'both',
-            at: Tuple[int] = (1, 3, 10)
+            at: Tuple[int] = (1, 3, 10), use_left_queries:bool = False
     ):
         if self.events is not None:
             return self.time_eval(model, split, n_queries, 'rhs', at)
@@ -105,7 +105,7 @@ class TemporalDataset(object):
                 q[:, 0] = q[:, 2]
                 q[:, 2] = tmp
                 q[:, 1] += self.n_predicates // 2
-            ranks = model.get_ranking(q, self.to_skip[m], batch_size=500)
+            ranks = model.get_ranking(q, self.to_skip[m], batch_size=500, use_left_queries=use_left_queries)
             mean_reciprocal_rank[m] = torch.mean(1. / ranks).item()
             hits_at[m] = torch.FloatTensor((list(map(
                 lambda x: torch.mean((ranks <= x).float()).item(),

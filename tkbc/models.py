@@ -29,7 +29,7 @@ class TKBCModel(nn.Module, ABC):
     def get_ranking(
             self, queries: torch.Tensor,
             filters: Dict[Tuple[int, int, int], List[int]],
-            batch_size: int = 1000, chunk_size: int = -1
+            batch_size: int = 1000, chunk_size: int = -1, use_left_queries:bool = False
     ):
         """
         Returns filtered ranking for each queries.
@@ -50,16 +50,21 @@ class TKBCModel(nn.Module, ABC):
                 while b_begin < len(queries):
                     these_queries = queries[b_begin:b_begin + batch_size]
                     q = self.get_queries(these_queries)
-			
-                    lhs_queries = torch.ones(these_queries.size()).long().cuda()
-                    lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
-                    lhs_queries[:,0] = these_queries[:,2]
-                    lhs_queries[:,2] = these_queries[:,0]
-                    lhs_queries[:,3] = these_queries[:,3]
-                    q_lhs = self.get_lhs_queries(lhs_queries)
 
-                    scores = q @ rhs +  q_lhs @ rhs
-                    targets = self.score(these_queries) + self.score(lhs_queries)
+                    if use_left_queries:
+                        lhs_queries = torch.ones(these_queries.size()).long().cuda()
+                        lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
+                        lhs_queries[:,0] = these_queries[:,2]
+                        lhs_queries[:,2] = these_queries[:,0]
+                        lhs_queries[:,3] = these_queries[:,3]
+                        q_lhs = self.get_lhs_queries(lhs_queries)
+                    
+                        scores = q @ rhs +  q_lhs @ rhs
+                        targets = self.score(these_queries) + self.score(lhs_queries)
+                    else:
+                        scores = q @ rhs 
+                        targets = self.score(these_queries)
+
                     assert not torch.any(torch.isinf(scores)), "inf scores"
                     assert not torch.any(torch.isnan(scores)), "nan scores"
                     assert not torch.any(torch.isinf(targets)), "inf targets"
@@ -853,7 +858,7 @@ class TGeomE2(TKBCModel):
         rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:]
         time = time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:]
 	
-	        # compute <h, r, T, t_conj> ==> 4**3
+        # compute <h, r, T, t_conj> ==> 4**3
         # full_rel = r * time
         A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]- rel[3]*time[3] # scalar
         B =   rel[0]*time[1]+ rel[1]*time[0]- rel[2]*time[3]+ rel[3]*time[2] # e1

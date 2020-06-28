@@ -67,8 +67,8 @@ parser.add_argument(
     help="Use specific GPU for training."
 )
 parser.add_argument(
-    '--left_loss', default=False, action="store_true",
-    help="Use left-ward loss in the loss function"
+    '--use_left', default=False, action="store_true",
+    help="Use left-ward loss in the loss function and left queries for ranking scores evaluation"
 )
 
 
@@ -156,11 +156,11 @@ def learn(model=args.model,
         else:
             optimizer = TKBCOptimizer(
                 model, emb_reg, time_reg, opt,
-                batch_size=batch_size, left_loss=args.left_loss
+                batch_size=batch_size, left_loss=args.use_left
             )
             optimizer_pretrain = TKBCOptimizer(
                 model, emb_reg, time_reg, opt_pretrain,
-                batch_size=batch_size, left_loss=args.left_loss
+                batch_size=batch_size, left_loss=args.use_left
             )
             if epoch >= epoch_pretrain:
                 optimizer.epoch(examples,pre_train=False)
@@ -171,7 +171,7 @@ def learn(model=args.model,
         if epoch < 0 or (epoch + 1) % args.valid_freq == 0:
             if dataset.has_intervals():
                 valid, test, train = [
-                    dataset.eval(model, split, -1 if split != 'train' else 50000)
+                    dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left)
                     for split in ['valid', 'test', 'train']
                 ]
                 print("valid: ", valid)
@@ -180,7 +180,7 @@ def learn(model=args.model,
 
             else:
                 valid, test, train = [
-                    avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000))
+                    avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left))
                     for split in ['valid', 'test', 'train']
                 ]
                 print("valid: ", valid['MRR'])
