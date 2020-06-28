@@ -14,7 +14,7 @@ class TKBCOptimizer(object):
             self, model: TKBCModel,
             emb_regularizer: Regularizer, temporal_regularizer: Regularizer,
             optimizer: optim.Optimizer, batch_size: int = 256,
-            verbose: bool = True
+            verbose: bool = True, left_loss: bool = False
     ):
         self.model = model
         self.emb_regularizer = emb_regularizer
@@ -22,6 +22,7 @@ class TKBCOptimizer(object):
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.verbose = verbose
+        self.left_loss = left_loss
 
     def epoch(self, examples: torch.LongTensor, pre_train: bool):
         actual_examples = examples[torch.randperm(examples.shape[0]), :]
@@ -46,7 +47,11 @@ class TKBCOptimizer(object):
                 l_time = torch.zeros_like(l_reg)
                 if time is not None:
                     l_time = self.temporal_regularizer.forward(time)
-                l = (l_fit+l_fit_l)/2 + l_reg + l_time
+
+                if self.left_loss:
+                    l = (l_fit+l_fit_l)/2 + l_reg + l_time
+                else:
+                    l = l_fit + l_reg + l_time
                 
                 self.optimizer.zero_grad()
                 l.backward()

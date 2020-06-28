@@ -66,6 +66,10 @@ parser.add_argument(
     '--use_gpu', default=0, type=int,
     help="Use specific GPU for training."
 )
+parser.add_argument(
+    '--left_loss', default=False, action="store_true",
+    help="Use left-ward loss in the loss function"
+)
 
 
 args = parser.parse_args()
@@ -152,11 +156,11 @@ def learn(model=args.model,
         else:
             optimizer = TKBCOptimizer(
                 model, emb_reg, time_reg, opt,
-                batch_size=batch_size
+                batch_size=batch_size, left_loss=args.left_loss
             )
             optimizer_pretrain = TKBCOptimizer(
                 model, emb_reg, time_reg, opt_pretrain,
-                batch_size=batch_size
+                batch_size=batch_size, left_loss=args.left_loss
             )
             if epoch >= epoch_pretrain:
                 optimizer.epoch(examples,pre_train=False)
