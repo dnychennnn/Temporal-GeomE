@@ -27,7 +27,7 @@ parser.add_argument(
     help="Model in {}".format(models)
 )
 parser.add_argument(
-    '--max_epochs', default=50, type=int,
+    '--max_epochs', default=200, type=int,
     help="Number of epochs."
 )
 parser.add_argument(
@@ -119,7 +119,7 @@ def learn(model=args.model,
     model = model.cuda()
 
     if epoch_pretrain > 0:
-        opt = optim.Adagrad(model.parameters(), lr=learning_rate/10)
+        opt = optim.Adagrad(model.parameters(), lr=learning_rate)
     else:
         opt = optim.Adagrad(model.parameters(), lr=learning_rate)
     opt_pretrain = optim.Adagrad(model.parameters(), lr=learning_rate)
@@ -197,7 +197,7 @@ def learn(model=args.model,
             mrr_valid = valid['MRR']
             if mrr_valid < mrr_std:
                patience += 1
-               if patience >= 3:
+               if patience >= 10:
                   print("Early stopping ...")
                   break
             else:
@@ -235,7 +235,7 @@ if __name__ == '__main__':
                         for time_reg in [0.01]:
                             for time_granularity in [1]:
                                 for dataset in ['ICEWS14']:
-                                    for epoch_pretrain in [100]:
+                                    for epoch_pretrain in [50]:
                                         learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,
