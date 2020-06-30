@@ -197,7 +197,7 @@ def learn(model=args.model,
             mrr_valid = valid['MRR']
             if mrr_valid < mrr_std:
                patience += 1
-               if patience >= 10:
+               if patience >= 10 and epoch>epoch_pretrain:
                   print("Early stopping ...")
                   break
             else:
