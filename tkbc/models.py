@@ -534,7 +534,8 @@ class TGeomE1(TKBCModel):
     
     def __init__(
             self, sizes: Tuple[int, int, int, int], rank: int,
-            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1
+            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1,
+            pre_train: bool = True
 ):
         super(TGeomE1, self).__init__()
         self.sizes = sizes
@@ -551,6 +552,11 @@ class TGeomE1(TKBCModel):
 
         self.no_time_emb = no_time_emb
         self.time_granularity = time_granularity
+
+        self.pre_train = pre_train
+	
+        if self.pre_train:
+            self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
 
     @staticmethod
     def has_time():
@@ -576,6 +582,36 @@ class TGeomE1(TKBCModel):
             (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) * rhs[1],
             1, keepdim=True
         )
+
+    
+    def pretrain(self, x):
+        
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        time = self.embeddings[2](x[:, 3] // self.time_granularity)
+
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:]
+        rel = rel[:, :self.rank], rel[:, self.rank:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:]
+        time = time[:, :self.rank], time[:, self.rank:]
+
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank:]
+
+        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
+        full_rel = rt[0] + rt[3], rt[1] + rt[2]
+
+        return (
+                       (lhs[0] * full_rel[0]) @ to_score[0].t() 
+               ),(
+                       (full_rel[0] * rhs[0]) @ to_score[0].t()
+	       ),(
+                   torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
+                   torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
+                   torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2)
+               ), self.embeddings[2].weight[:-1] if self.no_time_emb else torch.cat((self.embeddings[2].weight[:,:self.rank],self.embeddings[2].weight[:,
+	       self.rank:]),dim=1)
 
     def forward(self, x):
         lhs = self.embeddings[0](x[:, 0])
