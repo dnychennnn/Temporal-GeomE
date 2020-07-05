@@ -547,9 +547,6 @@ class TGeomE1(TKBCModel):
         self.embeddings[0].weight.data *= init_size
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
-
-        # self.embeddings[0].weight.data[:,self.rank:] *= 0
-        # self.embeddings[0].weight.data[:,self.rank:] *= 0
         
 
         self.no_time_emb = no_time_emb
@@ -570,11 +567,13 @@ class TGeomE1(TKBCModel):
         rhs = rhs[:, :self.rank], rhs[:, self.rank:]
         time = time[:, :self.rank], time[:, self.rank:]
 
+
+        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
+        full_rel = rt[0] + rt[3], rt[1] + rt[2]
+
         return torch.sum(
-            (lhs[0] * rel[0] * time[0] + lhs[1] * rel[1] * time[0] +
-             lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1]) * rhs[0] -
-            (lhs[1] * rel[0] * time[0] + lhs[0] * rel[1] * time[0] +
-             lhs[0] * rel[0] * time[1] + lhs[1] * rel[1] * time[1]) * rhs[1],
+            (lhs[0] * full_rel[0] + lhs[1] * full_rel[1] ) * rhs[0] -
+            (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) * rhs[1],
             1, keepdim=True
         )
 
