@@ -27,8 +27,7 @@ class TKBCModel(nn.Module, ABC):
         pass
 
     def get_ranking(
-            self, queries,
-            filters, year2id = {},
+            self, queries, filters, year2id = {},
             batch_size: int = 1000, chunk_size: int = -1, use_left_queries:bool = False
     ):
         """
@@ -48,7 +47,7 @@ class TKBCModel(nn.Module, ABC):
                 b_begin = 0
                 rhs = self.get_rhs(c_begin, chunk_size)
                 while b_begin < len(queries):
-		    if queries.shape[1]>4: #map time stamps in Wikidata12k and YAGO11k to time index
+                    if queries.shape[1]>4: #time intervals exist
                         these_queries = queries[b_begin:b_begin + batch_size]
                         start_queries = []
                         end_queries = []
@@ -93,25 +92,23 @@ class TKBCModel(nn.Module, ABC):
                         q_e = self.get_queries(end_queries)
                         scores = q_s @ rhs + q_e @ rhs
                         targets = self.score(start_queries)+self.score(end_queries)
-			
-			
-		    else:
-			these_queries = queries[b_begin:b_begin + batch_size]
-			q = self.get_queries(these_queries)
+                    else:
+                        these_queries = queries[b_begin:b_begin + batch_size]
+                        q = self.get_queries(these_queries)
 
-			if use_left_queries:
-				lhs_queries = torch.ones(these_queries.size()).long().cuda()
-				lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
-				lhs_queries[:,0] = these_queries[:,2]
-				lhs_queries[:,2] = these_queries[:,0]
-				lhs_queries[:,3] = these_queries[:,3]
-				q_lhs = self.get_lhs_queries(lhs_queries)
-
-				scores = q @ rhs +  q_lhs @ rhs
-				targets = self.score(these_queries) + self.score(lhs_queries)
-			else:
-				scores = q @ rhs 
-				targets = self.score(these_queries)
+                        if use_left_queries:
+                            lhs_queries = torch.ones(these_queries.size()).long().cuda()
+                            lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
+                            lhs_queries[:,0] = these_queries[:,2]
+                            lhs_queries[:,2] = these_queries[:,0]
+                            lhs_queries[:,3] = these_queries[:,3]
+                            q_lhs = self.get_lhs_queries(lhs_queries)
+                        
+                            scores = q @ rhs +  q_lhs @ rhs
+                            targets = self.score(these_queries) + self.score(lhs_queries)
+                        else:
+                            scores = q @ rhs 
+                            targets = self.score(these_queries)
 
                     assert not torch.any(torch.isinf(scores)), "inf scores"
                     assert not torch.any(torch.isnan(scores)), "nan scores"
@@ -120,9 +117,8 @@ class TKBCModel(nn.Module, ABC):
 
                     # set filtered and true scores to -1e6 to be ignored
                     # take care that scores are chunked
-					
                     for i, query in enumerate(these_queries):
-                        if queries.shape[1]>4: #for datasets YAGO11k and Wikidata12k
+                        if queries.shape[1]>4:
                             filter_out = filters[int(query[0]), int(query[1]), query[3], query[4]]
                             filter_out += [int(queries[b_begin + i, 2])]                            
                         else:    
@@ -674,8 +670,8 @@ class TGeomE2(TKBCModel):
         self.pre_train = pre_train
 	
         if self.pre_train:
-      #      self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
-            self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
+            self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
+      #      self.embeddings[1].weight.data[:,self.rank:self.rank*3] *= 0
       #      self.embeddings[2].weight.data[:,self.rank:self.rank*3] *= 0
         
 
