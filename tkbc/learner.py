@@ -177,6 +177,14 @@ def learn(model=args.model,
                 print("valid: ", valid)
                 print("test: ", test)
                 print("train: ", train)
+                
+            elif dataset.interval: #for datasets involving time intervals, no eval() for training data
+                valid, test = [
+                    avg_both(*dataset.eval(model, split, -1, use_left_queries=args.use_left))
+                    for split in ['valid', 'test']
+                ]
+                print("valid: ", valid['MRR'])
+                print("test: ", test['MRR'])
 
             else:
                 valid, test, train = [
@@ -207,9 +215,10 @@ def learn(model=args.model,
 
             curve['valid'].append(valid)
             # curve['test'].append(test)
-            curve['train'].append(train)
+            if not dataset.interval:
+                curve['train'].append(train)
     
-            print("\t TRAIN: ", train)
+                print("\t TRAIN: ", train)
             print("\t VALID : ", valid)
 
     model.load_state_dict(torch.load(os.path.join(PATH, modelname+'.pkl')))
