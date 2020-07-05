@@ -238,7 +238,7 @@ if __name__ == "__main__":
                     os.path.dirname(os.path.realpath(__file__)), 'src_data', d
                 ),
                 d,
-                fact_count=100
+                fact_count=1
             )
         except OSError as e:
             if e.errno == errno.EEXIST:
