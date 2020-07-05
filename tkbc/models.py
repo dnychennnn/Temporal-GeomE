@@ -110,10 +110,10 @@ class TKBCModel(nn.Module, ABC):
                             scores = q @ rhs 
                             targets = self.score(these_queries)
 
-					assert not torch.any(torch.isinf(scores)), "inf scores"
-					assert not torch.any(torch.isnan(scores)), "nan scores"
-					assert not torch.any(torch.isinf(targets)), "inf targets"
-					assert not torch.any(torch.isnan(targets)), "nan targets"
+                    assert not torch.any(torch.isinf(scores)), "inf scores"
+                    assert not torch.any(torch.isnan(scores)), "nan scores"
+                    assert not torch.any(torch.isinf(targets)), "inf targets"
+                    assert not torch.any(torch.isnan(targets)), "nan targets"
 
                     # set filtered and true scores to -1e6 to be ignored
                     # take care that scores are chunked
