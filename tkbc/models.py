@@ -48,7 +48,7 @@ class TKBCModel(nn.Module, ABC):
                 b_begin = 0
                 rhs = self.get_rhs(c_begin, chunk_size)
                 while b_begin < len(queries):
-					if queries.shape[1]>4: #map time stamps in Wikidata12k and YAGO11k to time index
+		    if queries.shape[1]>4: #map time stamps in Wikidata12k and YAGO11k to time index
                         these_queries = queries[b_begin:b_begin + batch_size]
                         start_queries = []
                         end_queries = []
@@ -95,23 +95,23 @@ class TKBCModel(nn.Module, ABC):
                         targets = self.score(start_queries)+self.score(end_queries)
 			
 			
-					else:
-						these_queries = queries[b_begin:b_begin + batch_size]
-						q = self.get_queries(these_queries)
+		    else:
+			these_queries = queries[b_begin:b_begin + batch_size]
+			q = self.get_queries(these_queries)
 
-						if use_left_queries:
-							lhs_queries = torch.ones(these_queries.size()).long().cuda()
-							lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
-							lhs_queries[:,0] = these_queries[:,2]
-							lhs_queries[:,2] = these_queries[:,0]
-							lhs_queries[:,3] = these_queries[:,3]
-							q_lhs = self.get_lhs_queries(lhs_queries)
+			if use_left_queries:
+				lhs_queries = torch.ones(these_queries.size()).long().cuda()
+				lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
+				lhs_queries[:,0] = these_queries[:,2]
+				lhs_queries[:,2] = these_queries[:,0]
+				lhs_queries[:,3] = these_queries[:,3]
+				q_lhs = self.get_lhs_queries(lhs_queries)
 
-							scores = q @ rhs +  q_lhs @ rhs
-							targets = self.score(these_queries) + self.score(lhs_queries)
-						else:
-							scores = q @ rhs 
-							targets = self.score(these_queries)
+				scores = q @ rhs +  q_lhs @ rhs
+				targets = self.score(these_queries) + self.score(lhs_queries)
+			else:
+				scores = q @ rhs 
+				targets = self.score(these_queries)
 
                     assert not torch.any(torch.isinf(scores)), "inf scores"
                     assert not torch.any(torch.isnan(scores)), "nan scores"
