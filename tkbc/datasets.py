@@ -29,6 +29,14 @@ class TemporalDataset(object):
         self.n_entities = int(max(maxis[0], maxis[2]) + 1)
         self.n_predicates = int(maxis[1] + 1)
         self.n_predicates *= 2
+        ## for yago11k and wikidata12k
+        if self.data['valid'].shape[1]>4:
+            self.interval = True # time intervals exist
+            f = open(str(self.root / 'ts_id.pickle'), 'rb')
+            self.time_dict = pickle.load(f)
+        else:
+            self.interval = False
+            
         if maxis.shape[0] > 4:
             self.n_timestamps = max(int(maxis[3] + 1), int(maxis[4] + 1))
         else:
@@ -87,30 +95,50 @@ class TemporalDataset(object):
         if self.events is not None:
             return self.time_eval(model, split, n_queries, 'rhs', at)
         test = self.get_examples(split)
-        examples = torch.from_numpy(test.astype('int64')).cuda()
+
         missing = [missing_eval]
         if missing_eval == 'both':
             missing = ['rhs', 'lhs']
 
         mean_reciprocal_rank = {}
         hits_at = {}
-
-        for m in missing:
-            q = examples.clone()
-            if n_queries > 0:
-                permutation = torch.randperm(len(examples))[:n_queries]
-                q = examples[permutation]
-            if m == 'lhs':
-                tmp = torch.clone(q[:, 0])
-                q[:, 0] = q[:, 2]
-                q[:, 2] = tmp
-                q[:, 1] += self.n_predicates // 2
-            ranks = model.get_ranking(q, self.to_skip[m], batch_size=500, use_left_queries=use_left_queries)
-            mean_reciprocal_rank[m] = torch.mean(1. / ranks).item()
-            hits_at[m] = torch.FloatTensor((list(map(
-                lambda x: torch.mean((ranks <= x).float()).item(),
-                at
-            ))))
+        
+        
+        if self.interval: #for datasets YAGO11k and wikidata12k, q is numpy.array(str)
+            examples = test
+            for m in missing:
+                q = np.copy(examples)
+                if m == 'lhs':
+                    tmp = np.copy(q[:, 0])
+                    q[:, 0] = q[:, 2]
+                    q[:, 2] = tmp
+                    q[:, 1] = q[:, 1].astype('uint64')+self.n_predicates // 2
+                ranks = model.get_ranking(q, self.to_skip[m], batch_size=500, 
+                                          use_left_queries=use_left_queries,
+                                          year2id=self.time_dict)
+                mean_reciprocal_rank[m] = torch.mean(1. / ranks).item()
+                hits_at[m] = torch.FloatTensor((list(map(
+                    lambda x: torch.mean((ranks <= x).float()).item(),
+                    at
+                ))))
+        else:
+            examples = torch.from_numpy(test.astype('int64')).cuda()
+            for m in missing:
+                q = examples.clone()
+                if n_queries > 0:
+                    permutation = torch.randperm(len(examples))[:n_queries]
+                    q = examples[permutation]
+                if m == 'lhs':
+                    tmp = torch.clone(q[:, 0])
+                    q[:, 0] = q[:, 2]
+                    q[:, 2] = tmp
+                    q[:, 1] += self.n_predicates // 2
+                ranks = model.get_ranking(q, self.to_skip[m], batch_size=500, use_left_queries=use_left_queries)
+                mean_reciprocal_rank[m] = torch.mean(1. / ranks).item()
+                hits_at[m] = torch.FloatTensor((list(map(
+                    lambda x: torch.mean((ranks <= x).float()).item(),
+                    at
+                ))))
 
         return mean_reciprocal_rank, hits_at
 
