@@ -47,68 +47,68 @@ class TKBCModel(nn.Module, ABC):
                 b_begin = 0
                 rhs = self.get_rhs(c_begin, chunk_size)
                 while b_begin < len(queries):
-					if queries.shape[1]>4: #time intervals exist
-						these_queries = queries[b_begin:b_begin + batch_size]
-						start_queries = []
-						end_queries = []
-						for triple in these_queries:
-							if triple[3].split('-')[0] == '####':
-								start_idx = -1
-								start = -5000
-							elif triple[3][0] == '-':
-								start=-int(triple[3].split('-')[1].replace('#', '0'))
-							elif triple[3][0] != '-':
-								start = int(triple[3].split('-')[0].replace('#','0'))
+                    if queries.shape[1]>4: #time intervals exist
+                        these_queries = queries[b_begin:b_begin + batch_size]
+                        start_queries = []
+                        end_queries = []
+                        for triple in these_queries:
+                            if triple[3].split('-')[0] == '####':
+                                start_idx = -1
+                                start = -5000
+                            elif triple[3][0] == '-':
+                                start=-int(triple[3].split('-')[1].replace('#', '0'))
+                            elif triple[3][0] != '-':
+                                start = int(triple[3].split('-')[0].replace('#','0'))
 
-							if triple[4].split('-')[0] == '####':
-								end_idx = -1
-								end = 5000
-							elif triple[4][0] == '-':
-								end =-int(triple[4].split('-')[1].replace('#', '0'))
-							elif triple[4][0] != '-':
-								end = int(triple[4].split('-')[0].replace('#','0'))
+                            if triple[4].split('-')[0] == '####':
+                                end_idx = -1
+                                end = 5000
+                            elif triple[4][0] == '-':
+                                end =-int(triple[4].split('-')[1].replace('#', '0'))
+                            elif triple[4][0] != '-':
+                                end = int(triple[4].split('-')[0].replace('#','0'))
 
-							for key, time_idx in sorted(year2id.items(), key=lambda x:x[1]):
-								if start>=key[0] and start<=key[1]:
-									start_idx = time_idx
-								if end>=key[0] and end<=key[1]:
-									end_idx = time_idx
+                            for key, time_idx in sorted(year2id.items(), key=lambda x:x[1]):
+                                if start>=key[0] and start<=key[1]:
+                                    start_idx = time_idx
+                                if end>=key[0] and end<=key[1]:
+                                    end_idx = time_idx
 
 
-							if start_idx < 0:
-								start_queries.append([int(triple[0]), int(triple[1])+self.sizes[1]//4, int(triple[2]), end_idx])
-							else:
-								start_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
+                            if start_idx < 0:
+                                start_queries.append([int(triple[0]), int(triple[1])+self.sizes[1]//4, int(triple[2]), end_idx])
+                            else:
+                                start_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
 
-							if end_idx < 0:
-								end_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
-							else:
-								end_queries.append([int(triple[0]), int(triple[1])+self.sizes[1]//4, int(triple[2]), end_idx])
+                            if end_idx < 0:
+                                end_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
+                            else:
+                                end_queries.append([int(triple[0]), int(triple[1])+self.sizes[1]//4, int(triple[2]), end_idx])
 
-						start_queries = torch.from_numpy(np.array(start_queries).astype('int64')).cuda()
-						end_queries = torch.from_numpy(np.array(end_queries).astype('int64')).cuda()
+                        start_queries = torch.from_numpy(np.array(start_queries).astype('int64')).cuda()
+                        end_queries = torch.from_numpy(np.array(end_queries).astype('int64')).cuda()
 
-						q_s = self.get_queries(start_queries)
-						q_e = self.get_queries(end_queries)
-						scores = q_s @ rhs + q_e @ rhs
-						targets = self.score(start_queries)+self.score(end_queries)
-					else:
-						these_queries = queries[b_begin:b_begin + batch_size]
-						q = self.get_queries(these_queries)
+                        q_s = self.get_queries(start_queries)
+                        q_e = self.get_queries(end_queries)
+                        scores = q_s @ rhs + q_e @ rhs
+                        targets = self.score(start_queries)+self.score(end_queries)
+                    else:
+                        these_queries = queries[b_begin:b_begin + batch_size]
+                        q = self.get_queries(these_queries)
 
-						if use_left_queries:
-							lhs_queries = torch.ones(these_queries.size()).long().cuda()
-							lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
-							lhs_queries[:,0] = these_queries[:,2]
-							lhs_queries[:,2] = these_queries[:,0]
-							lhs_queries[:,3] = these_queries[:,3]
-							q_lhs = self.get_lhs_queries(lhs_queries)
+                        if use_left_queries:
+                            lhs_queries = torch.ones(these_queries.size()).long().cuda()
+                            lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
+                            lhs_queries[:,0] = these_queries[:,2]
+                            lhs_queries[:,2] = these_queries[:,0]
+                            lhs_queries[:,3] = these_queries[:,3]
+                            q_lhs = self.get_lhs_queries(lhs_queries)
 
-							scores = q @ rhs +  q_lhs @ rhs
-							targets = self.score(these_queries) + self.score(lhs_queries)
-						else:
-							scores = q @ rhs 
-							targets = self.score(these_queries)
+                            scores = q @ rhs +  q_lhs @ rhs
+                            targets = self.score(these_queries) + self.score(lhs_queries)
+                        else:
+                            scores = q @ rhs 
+                            targets = self.score(these_queries)
 
 					assert not torch.any(torch.isinf(scores)), "inf scores"
 					assert not torch.any(torch.isnan(scores)), "nan scores"
