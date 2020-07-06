@@ -66,10 +66,10 @@ parser.add_argument(
     '--use_gpu', default=0, type=int,
     help="Use specific GPU for training."
 )
-parser.add_argument(
-    '--use_left', default=False, action="store_true",
-    help="Use left-ward loss in the loss function and left queries for ranking scores evaluation"
-)
+# parser.add_argument(
+#     '--use_left', default=False, action="store_true",
+#     help="Use left-ward loss in the loss function and left queries for ranking scores evaluation"
+# )
 
 
 args = parser.parse_args()
@@ -156,11 +156,11 @@ def learn(model=args.model,
         else:
             optimizer = TKBCOptimizer(
                 model, emb_reg, time_reg, opt,
-                batch_size=batch_size, left_loss=args.use_left
+                batch_size=batch_size
             )
             optimizer_pretrain = TKBCOptimizer(
                 model, emb_reg, time_reg, opt_pretrain,
-                batch_size=batch_size, left_loss=args.use_left
+                batch_size=batch_size
             )
             if epoch >= epoch_pretrain:
                 optimizer.epoch(examples,pre_train=False)
@@ -171,7 +171,8 @@ def learn(model=args.model,
         if epoch < 0 or (epoch + 1) % args.valid_freq == 0:
             if dataset.has_intervals():
                 valid, test, train = [
-                    dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left)
+                    # dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left)
+                    dataset.eval(model, split, -1 if split != 'train' else 50000)
                     for split in ['valid', 'test', 'train']
                 ]
                 print("valid: ", valid)
@@ -180,7 +181,8 @@ def learn(model=args.model,
                 
             elif dataset.interval: #for datasets involving time intervals, no eval() for training data
                 valid, test = [
-                    avg_both(*dataset.eval(model, split, -1, use_left_queries=args.use_left))
+                    # avg_both(*dataset.eval(model, split, -1, use_left_queries=args.use_left))
+                    avg_both(*dataset.eval(model, split, -1))
                     for split in ['valid', 'test']
                 ]
                 print("valid: ", valid['MRR'])
@@ -188,7 +190,8 @@ def learn(model=args.model,
 
             else:
                 valid, test, train = [
-                    avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left))
+                    # avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000, use_left_queries=args.use_left))
+                    avg_both(*dataset.eval(model, split, -1 if split != 'train' else 50000))
                     for split in ['valid', 'test', 'train']
                 ]
                 print("valid: ", valid['MRR'])
@@ -239,12 +242,12 @@ if __name__ == '__main__':
     for rank in [2000]:
         for lr in [0.1]:
             for batch_size in [1000]:
-                for model in ['TGeomE2']:
+                for model in ['TComplEx']:
                     for emb_reg in [0.01]:
                         for time_reg in [0.01]:
                             for time_granularity in [1]:
-                                for dataset in ['ICEWS14']:
-                                    for epoch_pretrain in [50]:
+                                for dataset in ['yago12k']:
+                                    for epoch_pretrain in [0]:
                                         learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,

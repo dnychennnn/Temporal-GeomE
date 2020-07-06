@@ -28,7 +28,7 @@ class TKBCModel(nn.Module, ABC):
 
     def get_ranking(
             self, queries, filters, year2id = {},
-            batch_size: int = 1000, chunk_size: int = -1, use_left_queries:bool = False
+            batch_size: int = 1000, chunk_size: int = -1
     ):
         """
         Returns filtered ranking for each queries.
@@ -95,7 +95,7 @@ class TKBCModel(nn.Module, ABC):
                     else:
                         these_queries = queries[b_begin:b_begin + batch_size]
                         q = self.get_queries(these_queries)
-
+                        """
                         if use_left_queries:
                             lhs_queries = torch.ones(these_queries.size()).long().cuda()
                             lhs_queries[:,1] = (these_queries[:,1]+self.sizes[1]//2)%self.sizes[1]
@@ -106,9 +106,10 @@ class TKBCModel(nn.Module, ABC):
 
                             scores = q @ rhs +  q_lhs @ rhs
                             targets = self.score(these_queries) + self.score(lhs_queries)
-                        else:
-                            scores = q @ rhs 
-                            targets = self.score(these_queries)
+                        """
+                        
+                        scores = q @ rhs 
+                        targets = self.score(these_queries)
 
                     assert not torch.any(torch.isinf(scores)), "inf scores"
                     assert not torch.any(torch.isnan(scores)), "nan scores"
@@ -787,9 +788,10 @@ class TGeomE2(TKBCModel):
                        (lhs[0] * full_rel[0] - lhs[1] * full_rel[1]) @ to_score[0].t() +
                        (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) @ to_score[1].t()
                ),(
-                       (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0].t() +
-                       (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1].t()
-	       ),(
+            #    (
+            #            (rhs[0] * full_rel[0] + rhs[1] * full_rel[1]) @ to_score[0].t() +
+            #            (rhs[1] * full_rel[0] - rhs[0] * full_rel[1]) @ to_score[1].t()),
+                
                    torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
                    torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
                    torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2)
@@ -837,10 +839,10 @@ class TGeomE2(TKBCModel):
         Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
         Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
 	
-        W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
-        X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
-        Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
-        Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
+        #W1 =  full_rel[0]*rhs[0]- full_rel[1]*rhs[1]- full_rel[2]*rhs[2]+ full_rel[3]*rhs[3]
+        #X1 =  full_rel[1]*rhs[0]- full_rel[0]*rhs[1]- full_rel[3]*rhs[2]+ full_rel[2]*rhs[3]
+        #Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
+        #Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
 
         to_score = self.embeddings[0].weight
         to_score = to_score[:, :self.rank], to_score[:, self.rank:self.rank*2], to_score[:, self.rank*2:self.rank*3], to_score[:, self.rank*3:]
@@ -864,11 +866,11 @@ class TGeomE2(TKBCModel):
                     Y @ to_score[2].transpose(0, 1) +
                     Z @ to_score[3].transpose(0, 1)
                ),(
-                    W1 @ to_score[0].transpose(0, 1) +
-                    X1 @ to_score[1].transpose(0, 1) +
-                    Y1 @ to_score[2].transpose(0, 1) +
-                    Z1 @ to_score[3].transpose(0, 1)
-               ),(
+                    # W1 @ to_score[0].transpose(0, 1) +
+                    # X1 @ to_score[1].transpose(0, 1) +
+                    # Y1 @ to_score[2].transpose(0, 1) +
+                    # Z1 @ to_score[3].transpose(0, 1)
+               
                     torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
                     torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2),
                     torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)

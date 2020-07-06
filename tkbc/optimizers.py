@@ -14,7 +14,7 @@ class TKBCOptimizer(object):
             self, model: TKBCModel,
             emb_regularizer: Regularizer, temporal_regularizer: Regularizer,
             optimizer: optim.Optimizer, batch_size: int = 256,
-            verbose: bool = True, left_loss: bool = False
+            verbose: bool = True
     ):
         self.model = model
         self.emb_regularizer = emb_regularizer
@@ -22,7 +22,7 @@ class TKBCOptimizer(object):
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.verbose = verbose
-        self.left_loss = left_loss
+        #self.left_loss = left_loss
 
     def epoch(self, examples: torch.LongTensor, pre_train: bool):
         actual_examples = examples[torch.randperm(examples.shape[0]), :]
@@ -35,23 +35,23 @@ class TKBCOptimizer(object):
                     b_begin:b_begin + self.batch_size
                 ].cuda()
                 if pre_train:
-                    predictions, predictions_l, factors, time = self.model.pretrain(input_batch)
+                    predictions, factors, time = self.model.pretrain(input_batch)
                 else:
-                    predictions, predictions_l, factors, time = self.model.forward(input_batch)
+                    predictions, factors, time = self.model.forward(input_batch)
                 truth = input_batch[:, 2]
-                truth_l = input_batch[:, 0]
+                #truth_l = input_batch[:, 0]
 
                 l_fit = loss(predictions, truth)
-                l_fit_l = loss(predictions_l, truth_l)
+                #l_fit_l = loss(predictions_l, truth_l)
                 l_reg = self.emb_regularizer.forward(factors)
                 l_time = torch.zeros_like(l_reg)
                 if time is not None:
                     l_time = self.temporal_regularizer.forward(time)
 
-                if self.left_loss:
-                    l = (l_fit+l_fit_l)/2 + l_reg + l_time
-                else:
-                    l = l_fit + l_reg + l_time
+                # if self.left_loss:
+                #     l = (l_fit+l_fit_l)/2 + l_reg + l_time
+                # else:
+                l = l_fit + l_reg + l_time
                 
                 self.optimizer.zero_grad()
                 l.backward()

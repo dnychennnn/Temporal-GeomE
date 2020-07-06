@@ -1,21 +1,21 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 
-#import pkg_resources
+import pkg_resources
 import os
 import errno
 from pathlib import Path
 import pickle
 import re
 import sys
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 import numpy as np
 
 from collections import defaultdict
 
-#DATA_PATH = pkg_resources.resource_filename('tkbc', 'data/')
-DATA_PATH = 'data/'
+DATA_PATH = pkg_resources.resource_filename('tkbc', 'data/')
+#DATA_PATH = 'data/'
 
 def prepare_dataset_rels(path, name, fact_count):
     """
