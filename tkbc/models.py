@@ -960,3 +960,250 @@ class TGeomE2(TKBCModel):
         Y1 =  full_rel[2]*rhs[0]+ full_rel[3]*rhs[1]- full_rel[0]*rhs[2]- full_rel[1]*rhs[3]
         Z1 =- full_rel[3]*rhs[0]- full_rel[2]*rhs[1]+ full_rel[1]*rhs[2]+ full_rel[0]*rhs[3]
         return torch.cat([W1,X1,Y1,Z1], 1)
+
+
+class TGeomE3(TKBCModel):
+    def __init__(
+            self, sizes: Tuple[int, int, int, int], rank: int,
+            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1,
+	    pre_train: bool = True
+    ):
+        super(TGeomE3, self).__init__()
+        self.sizes = sizes
+        self.rank = rank
+
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(s, 8 * rank, sparse=True)
+            for s in [sizes[0], sizes[1], sizes[3]] # without no_time_emb
+        ])
+        self.embeddings[0].weight.data *= init_size
+        self.embeddings[1].weight.data *= init_size
+        self.embeddings[2].weight.data *= init_size
+        
+        self.pre_train = pre_train
+	
+        if self.pre_train:
+            self.embeddings[0].weight.data[:,self.rank:self.rank*4] *= 0
+            self.embeddings[0].weight.data[:,self.rank*7:] *= 0
+
+    @staticmethod
+    def has_time():
+        return True
+
+    def score(self, x):
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        time = self.embeddings[2](x[:, 3] // self.time_granularity) 
+
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:self.rank*4],\
+              lhs[:, self.rank*4:self.rank*5], lhs[:, self.rank*5:self.rank*6], lhs[:, self.rank*6:self.rank*7], lhs[:, self.rank*7:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:self.rank*4],\
+              rel[:, self.rank*4:self.rank*5], rel[:, self.rank*5:self.rank*6], rel[:, self.rank*6:self.rank*7], rel[:, self.rank*7:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:self.rank*4],\
+              rhs[:, self.rank*4:self.rank*5], rhs[:, self.rank*5:self.rank*6], rhs[:, self.rank*6:self.rank*7], rhs[:, self.rank*7:]
+        time= time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:self.rank*4],\
+              time[:, self.rank*4:self.rank*5], time[:, self.rank*5:self.rank*6], time[:, self.rank*6:self.rank*7], time[:, self.rank*7:]
+
+        A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]+ rel[3]*time[3]\
+            - rel[4]*time[4]- rel[5]*time[5]- rel[6]*time[6]- rel[7]*time[7] 
+        B = - rel[0]*time[1]- rel[1]*time[0]+ rel[2]*time[4]- rel[4]*time[2]\
+            + rel[3]*time[6]- rel[6]*time[3]+ rel[5]*time[7]+ rel[7]*time[5]
+        C = - rel[0]*time[2]- rel[2]*time[0]+ rel[4]*time[1]- rel[1]*time[4]\
+            - rel[5]*time[3]+ rel[3]*time[5]- rel[6]*time[7]- rel[7]*time[6]        
+        D = - rel[0]*time[3]- rel[3]*time[0]- rel[1]*time[6]+ rel[6]*time[1]\
+            - rel[2]*time[5]+ rel[5]*time[2]+ rel[4]*time[7]+ rel[7]*time[4]
+        E =   rel[0]*time[4]+ rel[4]*time[0]+ rel[1]*time[2]- rel[2]*time[1]\
+            - rel[6]*time[5]+ rel[5]*time[6]+ rel[7]*time[3]+ rel[3]*time[7] 
+        F =   rel[0]*time[5]+ rel[5]*time[0]+ rel[2]*time[3]- rel[3]*time[2]\
+            - rel[4]*time[6]+ rel[6]*time[4]+ rel[7]*time[1]+ rel[1]*time[7]
+        G =   rel[0]*time[6]+ rel[6]*time[0]+ rel[1]*time[3]- rel[3]*time[1]\
+            + rel[4]*time[5]- rel[5]*time[4]- rel[2]*time[7]- rel[7]*time[2]        
+        H =   rel[0]*time[7]+ rel[7]*time[0]+ rel[4]*time[3]+ rel[3]*time[4]\
+            + rel[1]*time[5]+ rel[5]*time[1]- rel[2]*time[6]- rel[6]*time[2]
+
+        full_rel = A,-B,-C,-D,E,F,G,-H
+        
+        A1 =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]+ lhs[3]*full_rel[3]\
+            - lhs[4]*full_rel[4]- lhs[5]*full_rel[5]- lhs[6]*full_rel[6]- lhs[7]*full_rel[7] 
+        B1 = - lhs[0]*full_rel[1]- lhs[1]*full_rel[0]+ lhs[2]*full_rel[4]- lhs[4]*full_rel[2]\
+            + lhs[3]*full_rel[6]- lhs[6]*full_rel[3]+ lhs[5]*full_rel[7]+ lhs[7]*full_rel[5]
+        C1 = - lhs[0]*full_rel[2]- lhs[2]*full_rel[0]+ lhs[4]*full_rel[1]- lhs[1]*full_rel[4]\
+            - lhs[5]*full_rel[3]+ lhs[3]*full_rel[5]- lhs[6]*full_rel[7]- lhs[7]*full_rel[6]        
+        D1 = - lhs[0]*full_rel[3]- lhs[3]*full_rel[0]- lhs[1]*full_rel[6]+ lhs[6]*full_rel[1]\
+            - lhs[2]*full_rel[5]+ lhs[5]*full_rel[2]+ lhs[4]*full_rel[7]+ lhs[7]*full_rel[4]
+        E1 =   lhs[0]*full_rel[4]+ lhs[4]*full_rel[0]+ lhs[1]*full_rel[2]- lhs[2]*full_rel[1]\
+            - lhs[6]*full_rel[5]+ lhs[5]*full_rel[6]+ lhs[7]*full_rel[3]+ lhs[3]*full_rel[7] 
+        F1 =   lhs[0]*full_rel[5]+ lhs[5]*full_rel[0]+ lhs[2]*full_rel[3]- lhs[3]*full_rel[2]\
+            - lhs[4]*full_rel[6]+ lhs[6]*full_rel[4]+ lhs[7]*full_rel[1]+ lhs[1]*full_rel[7]
+        G1 =   lhs[0]*full_rel[6]+ lhs[6]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]\
+            + lhs[4]*full_rel[5]- lhs[5]*full_rel[4]- lhs[2]*full_rel[7]- lhs[7]*full_rel[2]        
+        H1 =   lhs[0]*full_rel[7]+ lhs[7]*full_rel[0]+ lhs[4]*full_rel[3]+ lhs[3]*full_rel[4]\
+            + lhs[1]*full_rel[5]+ lhs[5]*full_rel[1]- lhs[2]*full_rel[6]- lhs[6]*full_rel[2]
+
+        return torch.sum(A1*rhs[0]+B1*rhs[1]+C1*rhs[2]+D1*rhs[3]+E1*rhs[4]+F1*rhs[5]+G1*rhs[6]+H1*rhs[7]
+                         ,1, keepdim=True)
+
+    def pretrain(self, x):
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        time = self.embeddings[2](x[:, 3] // self.time_granularity)
+
+        lhs = lhs[:, :self.rank], lhs[:, self.rank*4:self.rank*5], lhs[:, self.rank*5:self.rank*6], lhs[:, self.rank*6:self.rank*7]
+        rel = rel[:, :self.rank], rel[:, self.rank*4:self.rank*5], rel[:, self.rank*5:self.rank*6], rel[:, self.rank*6:self.rank*7]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank*4:self.rank*5], rhs[:, self.rank*5:self.rank*6], rhs[:, self.rank*6:self.rank*7]
+        time = time[:, :self.rank], time[:, self.rank*4:self.rank*5], time[:, self.rank*5:self.rank*6], time[:, self.rank*6:self.rank*7]
+        
+        A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]- rel[3]*time[3] # scalar
+        B =   rel[0]*time[1]+ rel[1]*time[0]- rel[2]*time[3]+ rel[3]*time[2] # e1
+        C =   rel[0]*time[2]+ rel[2]*time[0]+ rel[1]*time[3]- rel[3]*time[1]  # e2
+        D =   rel[1]*time[2]- rel[2]*time[1]+ rel[0]*time[3]+ rel[3]*time[0] # e1e2
+
+        full_rel = A,B,C,D
+        
+        # h * full_rel, note that we do not change +- sign here, thus we need do that later
+        W =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]- lhs[3]*full_rel[3] # scalar
+        X =   lhs[0]*full_rel[1]+ lhs[1]*full_rel[0]- lhs[2]*full_rel[3]+ lhs[3]*full_rel[2] # e1
+        Y =   lhs[0]*full_rel[2]+ lhs[2]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]  # e2
+        Z =   lhs[1]*full_rel[2]- lhs[2]*full_rel[1]+ lhs[0]*full_rel[3]+ lhs[3]*full_rel[0] # e1e2
+
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank*4:self.rank*5], to_score[:, self.rank*5:self.rank*6], to_score[:, self.rank*6:self.rank*7]
+        return (
+                    W @ to_score[0].transpose(0, 1) -
+                    X @ to_score[1].transpose(0, 1) -
+                    Y @ to_score[2].transpose(0, 1) +
+                    Z @ to_score[3].transpose(0, 1)
+               ),(             
+                    torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2),
+                    torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2),
+                    torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2)
+               ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
+
+
+
+    def forward(self, x):
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        time = self.embeddings[2](x[:, 3] // self.time_granularity) 
+
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:self.rank*4],\
+              lhs[:, self.rank*4:self.rank*5], lhs[:, self.rank*5:self.rank*6], lhs[:, self.rank*6:self.rank*7], lhs[:, self.rank*7:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:self.rank*4],\
+              rel[:, self.rank*4:self.rank*5], rel[:, self.rank*5:self.rank*6], rel[:, self.rank*6:self.rank*7], rel[:, self.rank*7:]
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:self.rank*2], rhs[:, self.rank*2:self.rank*3], rhs[:, self.rank*3:self.rank*4],\
+              rhs[:, self.rank*4:self.rank*5], rhs[:, self.rank*5:self.rank*6], rhs[:, self.rank*6:self.rank*7], rhs[:, self.rank*7:]
+        time= time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:self.rank*4],\
+              time[:, self.rank*4:self.rank*5], time[:, self.rank*5:self.rank*6], time[:, self.rank*6:self.rank*7], time[:, self.rank*7:]
+              
+        A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]+ rel[3]*time[3]\
+            - rel[4]*time[4]- rel[5]*time[5]- rel[6]*time[6]- rel[7]*time[7] 
+        B = - rel[0]*time[1]- rel[1]*time[0]+ rel[2]*time[4]- rel[4]*time[2]\
+            + rel[3]*time[6]- rel[6]*time[3]+ rel[5]*time[7]+ rel[7]*time[5]
+        C = - rel[0]*time[2]- rel[2]*time[0]+ rel[4]*time[1]- rel[1]*time[4]\
+            - rel[5]*time[3]+ rel[3]*time[5]- rel[6]*time[7]- rel[7]*time[6]        
+        D = - rel[0]*time[3]- rel[3]*time[0]- rel[1]*time[6]+ rel[6]*time[1]\
+            - rel[2]*time[5]+ rel[5]*time[2]+ rel[4]*time[7]+ rel[7]*time[4]
+        E =   rel[0]*time[4]+ rel[4]*time[0]+ rel[1]*time[2]- rel[2]*time[1]\
+            - rel[6]*time[5]+ rel[5]*time[6]+ rel[7]*time[3]+ rel[3]*time[7] 
+        F =   rel[0]*time[5]+ rel[5]*time[0]+ rel[2]*time[3]- rel[3]*time[2]\
+            - rel[4]*time[6]+ rel[6]*time[4]+ rel[7]*time[1]+ rel[1]*time[7]
+        G =   rel[0]*time[6]+ rel[6]*time[0]+ rel[1]*time[3]- rel[3]*time[1]\
+            + rel[4]*time[5]- rel[5]*time[4]- rel[2]*time[7]- rel[7]*time[2]        
+        H =   rel[0]*time[7]+ rel[7]*time[0]+ rel[4]*time[3]+ rel[3]*time[4]\
+            + rel[1]*time[5]+ rel[5]*time[1]- rel[2]*time[6]- rel[6]*time[2]
+
+        full_rel = A,-B,-C,-D,E,F,G,-H
+        
+        A1 =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]+ lhs[3]*full_rel[3]\
+            - lhs[4]*full_rel[4]- lhs[5]*full_rel[5]- lhs[6]*full_rel[6]- lhs[7]*full_rel[7] 
+        B1 = - lhs[0]*full_rel[1]- lhs[1]*full_rel[0]+ lhs[2]*full_rel[4]- lhs[4]*full_rel[2]\
+            + lhs[3]*full_rel[6]- lhs[6]*full_rel[3]+ lhs[5]*full_rel[7]+ lhs[7]*full_rel[5]
+        C1 = - lhs[0]*full_rel[2]- lhs[2]*full_rel[0]+ lhs[4]*full_rel[1]- lhs[1]*full_rel[4]\
+            - lhs[5]*full_rel[3]+ lhs[3]*full_rel[5]- lhs[6]*full_rel[7]- lhs[7]*full_rel[6]        
+        D1 = - lhs[0]*full_rel[3]- lhs[3]*full_rel[0]- lhs[1]*full_rel[6]+ lhs[6]*full_rel[1]\
+            - lhs[2]*full_rel[5]+ lhs[5]*full_rel[2]+ lhs[4]*full_rel[7]+ lhs[7]*full_rel[4]
+        E1 =   lhs[0]*full_rel[4]+ lhs[4]*full_rel[0]+ lhs[1]*full_rel[2]- lhs[2]*full_rel[1]\
+            - lhs[6]*full_rel[5]+ lhs[5]*full_rel[6]+ lhs[7]*full_rel[3]+ lhs[3]*full_rel[7] 
+        F1 =   lhs[0]*full_rel[5]+ lhs[5]*full_rel[0]+ lhs[2]*full_rel[3]- lhs[3]*full_rel[2]\
+            - lhs[4]*full_rel[6]+ lhs[6]*full_rel[4]+ lhs[7]*full_rel[1]+ lhs[1]*full_rel[7]
+        G1 =   lhs[0]*full_rel[6]+ lhs[6]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]\
+            + lhs[4]*full_rel[5]- lhs[5]*full_rel[4]- lhs[2]*full_rel[7]- lhs[7]*full_rel[2]        
+        H1 =   lhs[0]*full_rel[7]+ lhs[7]*full_rel[0]+ lhs[4]*full_rel[3]+ lhs[3]*full_rel[4]\
+            + lhs[1]*full_rel[5]+ lhs[5]*full_rel[1]- lhs[2]*full_rel[6]- lhs[6]*full_rel[2]
+       
+
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank:self.rank*2], to_score[:, self.rank*2:self.rank*3], to_score[:, self.rank*3:self.rank*4],\
+        to_score[:, self.rank*4:self.rank*5], to_score[:, self.rank*5:self.rank*6], to_score[:, self.rank*6:self.rank*7], to_score[:, self.rank*7:]
+        return (
+             A1 @ to_score[0].transpose(0, 1) +
+             B1 @ to_score[1].transpose(0, 1) +
+             C1 @ to_score[2].transpose(0, 1) +
+             D1 @ to_score[3].transpose(0, 1) +
+             E1 @ to_score[4].transpose(0, 1) +
+             F1 @ to_score[5].transpose(0, 1) +
+             G1 @ to_score[6].transpose(0, 1) +
+             H1 @ to_score[7].transpose(0, 1)
+        ),(
+            torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2+ lhs[4] ** 2 + lhs[5] ** 2+ lhs[6] ** 2+ lhs[7] ** 2),
+            torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2+ full_rel[4] ** 2 + full_rel[5] ** 2+ full_rel[6] ** 2+ full_rel[7] ** 2),
+            torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2+ rhs[4] ** 2 + rhs[5] ** 2+ rhs[6] ** 2+ rhs[7] ** 2)
+        )
+
+    def get_rhs(self, chunk_begin: int, chunk_size: int):
+        return self.embeddings[0].weight.data[
+            chunk_begin:chunk_begin + chunk_size
+        ].transpose(0, 1)
+
+    def get_queries(self, queries: torch.Tensor):
+        lhs = self.embeddings[0](queries[:, 0])
+        rel = self.embeddings[1](queries[:, 1])
+        time = self.embeddings[2](queries[:, 3] // self.time_granularity) 
+        
+        lhs = lhs[:, :self.rank], lhs[:, self.rank:self.rank*2], lhs[:, self.rank*2:self.rank*3], lhs[:, self.rank*3:self.rank*4],\
+              lhs[:, self.rank*4:self.rank*5], lhs[:, self.rank*5:self.rank*6], lhs[:, self.rank*6:self.rank*7], lhs[:, self.rank*7:]
+        rel = rel[:, :self.rank], rel[:, self.rank:self.rank*2], rel[:, self.rank*2:self.rank*3], rel[:, self.rank*3:self.rank*4],\
+              rel[:, self.rank*4:self.rank*5], rel[:, self.rank*5:self.rank*6], rel[:, self.rank*6:self.rank*7], rel[:, self.rank*7:]
+        time= time[:, :self.rank], time[:, self.rank:self.rank*2], time[:, self.rank*2:self.rank*3], time[:, self.rank*3:self.rank*4],\
+              time[:, self.rank*4:self.rank*5], time[:, self.rank*5:self.rank*6], time[:, self.rank*6:self.rank*7], time[:, self.rank*7:]
+              
+        A =   rel[0]*time[0]+ rel[1]*time[1]+ rel[2]*time[2]+ rel[3]*time[3]\
+            - rel[4]*time[4]- rel[5]*time[5]- rel[6]*time[6]- rel[7]*time[7] 
+        B = - rel[0]*time[1]- rel[1]*time[0]+ rel[2]*time[4]- rel[4]*time[2]\
+            + rel[3]*time[6]- rel[6]*time[3]+ rel[5]*time[7]+ rel[7]*time[5]
+        C = - rel[0]*time[2]- rel[2]*time[0]+ rel[4]*time[1]- rel[1]*time[4]\
+            - rel[5]*time[3]+ rel[3]*time[5]- rel[6]*time[7]- rel[7]*time[6]        
+        D = - rel[0]*time[3]- rel[3]*time[0]- rel[1]*time[6]+ rel[6]*time[1]\
+            - rel[2]*time[5]+ rel[5]*time[2]+ rel[4]*time[7]+ rel[7]*time[4]
+        E =   rel[0]*time[4]+ rel[4]*time[0]+ rel[1]*time[2]- rel[2]*time[1]\
+            - rel[6]*time[5]+ rel[5]*time[6]+ rel[7]*time[3]+ rel[3]*time[7] 
+        F =   rel[0]*time[5]+ rel[5]*time[0]+ rel[2]*time[3]- rel[3]*time[2]\
+            - rel[4]*time[6]+ rel[6]*time[4]+ rel[7]*time[1]+ rel[1]*time[7]
+        G =   rel[0]*time[6]+ rel[6]*time[0]+ rel[1]*time[3]- rel[3]*time[1]\
+            + rel[4]*time[5]- rel[5]*time[4]- rel[2]*time[7]- rel[7]*time[2]        
+        H =   rel[0]*time[7]+ rel[7]*time[0]+ rel[4]*time[3]+ rel[3]*time[4]\
+            + rel[1]*time[5]+ rel[5]*time[1]- rel[2]*time[6]- rel[6]*time[2]
+
+        full_rel = A,-B,-C,-D,E,F,G,-H
+        
+        A1 =   lhs[0]*full_rel[0]+ lhs[1]*full_rel[1]+ lhs[2]*full_rel[2]+ lhs[3]*full_rel[3]\
+            - lhs[4]*full_rel[4]- lhs[5]*full_rel[5]- lhs[6]*full_rel[6]- lhs[7]*full_rel[7] 
+        B1 = - lhs[0]*full_rel[1]- lhs[1]*full_rel[0]+ lhs[2]*full_rel[4]- lhs[4]*full_rel[2]\
+            + lhs[3]*full_rel[6]- lhs[6]*full_rel[3]+ lhs[5]*full_rel[7]+ lhs[7]*full_rel[5]
+        C1 = - lhs[0]*full_rel[2]- lhs[2]*full_rel[0]+ lhs[4]*full_rel[1]- lhs[1]*full_rel[4]\
+            - lhs[5]*full_rel[3]+ lhs[3]*full_rel[5]- lhs[6]*full_rel[7]- lhs[7]*full_rel[6]        
+        D1 = - lhs[0]*full_rel[3]- lhs[3]*full_rel[0]- lhs[1]*full_rel[6]+ lhs[6]*full_rel[1]\
+            - lhs[2]*full_rel[5]+ lhs[5]*full_rel[2]+ lhs[4]*full_rel[7]+ lhs[7]*full_rel[4]
+        E1 =   lhs[0]*full_rel[4]+ lhs[4]*full_rel[0]+ lhs[1]*full_rel[2]- lhs[2]*full_rel[1]\
+            - lhs[6]*full_rel[5]+ lhs[5]*full_rel[6]+ lhs[7]*full_rel[3]+ lhs[3]*full_rel[7] 
+        F1 =   lhs[0]*full_rel[5]+ lhs[5]*full_rel[0]+ lhs[2]*full_rel[3]- lhs[3]*full_rel[2]\
+            - lhs[4]*full_rel[6]+ lhs[6]*full_rel[4]+ lhs[7]*full_rel[1]+ lhs[1]*full_rel[7]
+        G1 =   lhs[0]*full_rel[6]+ lhs[6]*full_rel[0]+ lhs[1]*full_rel[3]- lhs[3]*full_rel[1]\
+            + lhs[4]*full_rel[5]- lhs[5]*full_rel[4]- lhs[2]*full_rel[7]- lhs[7]*full_rel[2]        
+        H1 =   lhs[0]*full_rel[7]+ lhs[7]*full_rel[0]+ lhs[4]*full_rel[3]+ lhs[3]*full_rel[4]\
+            + lhs[1]*full_rel[5]+ lhs[5]*full_rel[1]- lhs[2]*full_rel[6]- lhs[6]*full_rel[2]
+
+        return torch.cat((A1,B1,C1,D1,E1,F1,G1,H1), 1)
