@@ -8,7 +8,7 @@ from torch import optim
 
 from datasets import TemporalDataset
 from optimizers import TKBCOptimizer, IKBCOptimizer
-from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2
+from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2, TGeomE3
 from regularizers import N3, Lambda3
 import os
 
@@ -114,7 +114,8 @@ def learn(model=args.model,
         'TComplEx': TComplEx(sizes, rank, no_time_emb=args.no_time_emb),
         'TNTComplEx': TNTComplEx(sizes, rank, no_time_emb=args.no_time_emb),
         'TGeomE1': TGeomE1(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity),
-        'TGeomE2': TGeomE2(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity)
+        'TGeomE2': TGeomE2(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity),
+        'TGeomE3': TGeomE3(sizes, rank, no_time_emb=args.no_time_emb, time_granularity=time_granularity)
     }[model]
     model = model.cuda()
 
@@ -242,12 +243,12 @@ if __name__ == '__main__':
     for rank in [2000]:
         for lr in [0.1]:
             for batch_size in [1000]:
-                for model in ['TComplEx']:
-                    for emb_reg in [0.01]:
-                        for time_reg in [0.01]:
+                for model in ['TGeomE3']:
+                    for emb_reg in [0.01, 0.0075]:
+                        for time_reg in [0.01, 0.0075]:
                             for time_granularity in [1]:
-                                for dataset in ['yago12k']:
-                                    for epoch_pretrain in [0]:
+                                for dataset in ['ICEWS14']:
+                                    for epoch_pretrain in [50]:
                                         learn(  model=model,
                                             dataset=dataset,
                                             rank=rank,

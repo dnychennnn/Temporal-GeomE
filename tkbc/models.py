@@ -981,6 +981,11 @@ class TGeomE3(TKBCModel):
         self.embeddings[2].weight.data *= init_size
         
         self.pre_train = pre_train
+
+        self.time_granularity = time_granularity
+        self.no_time_emb = no_time_emb
+
+
 	
         if self.pre_train:
             self.embeddings[0].weight.data[:,self.rank:self.rank*4] *= 0
@@ -1151,7 +1156,11 @@ class TGeomE3(TKBCModel):
             torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2+ lhs[2] ** 2+ lhs[3] ** 2+ lhs[4] ** 2 + lhs[5] ** 2+ lhs[6] ** 2+ lhs[7] ** 2),
             torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2+ full_rel[2] ** 2+ full_rel[3] ** 2+ full_rel[4] ** 2 + full_rel[5] ** 2+ full_rel[6] ** 2+ full_rel[7] ** 2),
             torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2+ rhs[2] ** 2+ rhs[3] ** 2+ rhs[4] ** 2 + rhs[5] ** 2+ rhs[6] ** 2+ rhs[7] ** 2)
-        )
+        ), self.embeddings[2].weight[:-1] if self.no_time_emb else self.embeddings[2].weight
+
+    
+    def forward_over_time(self, x):
+        return None
 
     def get_rhs(self, chunk_begin: int, chunk_size: int):
         return self.embeddings[0].weight.data[
