@@ -59,7 +59,6 @@ class TKBCModel(nn.Module, ABC):
                                 start=-int(triple[3].split('-')[1].replace('#', '0'))
                             elif triple[3][0] != '-':
                                 start = int(triple[3].split('-')[0].replace('#','0'))
-
                             if triple[4].split('-')[0] == '####':
                                 end_idx = -1
                                 end = 5000
@@ -67,7 +66,6 @@ class TKBCModel(nn.Module, ABC):
                                 end =-int(triple[4].split('-')[1].replace('#', '0'))
                             elif triple[4][0] != '-':
                                 end = int(triple[4].split('-')[0].replace('#','0'))
-
                             for key, time_idx in sorted(year2id.items(), key=lambda x:x[1]):
                                 if start>=key[0] and start<=key[1]:
                                     start_idx = time_idx
@@ -79,7 +77,6 @@ class TKBCModel(nn.Module, ABC):
                                 start_queries.append([int(triple[0]), int(triple[1])+self.sizes[1]//4, int(triple[2]), end_idx])
                             else:
                                 start_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
-
                             if end_idx < 0:
                                 end_queries.append([int(triple[0]), int(triple[1]), int(triple[2]), start_idx])
                             else:
@@ -535,8 +532,7 @@ class TGeomE1(TKBCModel):
     
     def __init__(
             self, sizes: Tuple[int, int, int, int], rank: int,
-            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1,
-            pre_train: bool = True
+            no_time_emb=False, init_size: float = 1e-2, time_granularity: int = 1
 ):
         super(TGeomE1, self).__init__()
         self.sizes = sizes
@@ -549,15 +545,13 @@ class TGeomE1(TKBCModel):
         self.embeddings[0].weight.data *= init_size
         self.embeddings[1].weight.data *= init_size
         self.embeddings[2].weight.data *= init_size
+
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
+        # self.embeddings[0].weight.data[:,self.rank:] *= 0
         
 
         self.no_time_emb = no_time_emb
         self.time_granularity = time_granularity
-
-        self.pre_train = pre_train
-	
-        if self.pre_train:
-            self.embeddings[0].weight.data[:,self.rank:self.rank*3] *= 0
 
     @staticmethod
     def has_time():
@@ -574,45 +568,13 @@ class TGeomE1(TKBCModel):
         rhs = rhs[:, :self.rank], rhs[:, self.rank:]
         time = time[:, :self.rank], time[:, self.rank:]
 
-
-        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
-        full_rel = rt[0] + rt[3], rt[1] + rt[2]
-
         return torch.sum(
-            (lhs[0] * full_rel[0] + lhs[1] * full_rel[1] ) * rhs[0] -
-            (lhs[1] * full_rel[0] + lhs[0] * full_rel[1]) * rhs[1],
+            (lhs[0] * rel[0] * time[0] + lhs[1] * rel[1] * time[0] +
+             lhs[1] * rel[0] * time[1] + lhs[0] * rel[1] * time[1]) * rhs[0] -
+            (lhs[1] * rel[0] * time[0] + lhs[0] * rel[1] * time[0] +
+             lhs[0] * rel[0] * time[1] + lhs[1] * rel[1] * time[1]) * rhs[1],
             1, keepdim=True
         )
-
-    
-    def pretrain(self, x):
-        
-        lhs = self.embeddings[0](x[:, 0])
-        rel = self.embeddings[1](x[:, 1])
-        rhs = self.embeddings[0](x[:, 2])
-        time = self.embeddings[2](x[:, 3] // self.time_granularity)
-
-        lhs = lhs[:, :self.rank], lhs[:, self.rank:]
-        rel = rel[:, :self.rank], rel[:, self.rank:]
-        rhs = rhs[:, :self.rank], rhs[:, self.rank:]
-        time = time[:, :self.rank], time[:, self.rank:]
-
-        to_score = self.embeddings[0].weight
-        to_score = to_score[:, :self.rank], to_score[:, self.rank:]
-
-        rt = rel[0] * time[0], rel[1] * time[0], rel[0] * time[1], rel[1] * time[1]
-        full_rel = rt[0] + rt[3], rt[1] + rt[2]
-
-        return (
-                       (lhs[0] * full_rel[0]) @ to_score[0].t() 
-               ),(
-                       (full_rel[0] * rhs[0]) @ to_score[0].t()
-	       ),(
-                   torch.sqrt(lhs[0] ** 2 + lhs[1] ** 2),
-                   torch.sqrt(full_rel[0] ** 2 + full_rel[1] ** 2),
-                   torch.sqrt(rhs[0] ** 2 + rhs[1] ** 2)
-               ), self.embeddings[2].weight[:-1] if self.no_time_emb else torch.cat((self.embeddings[2].weight[:,:self.rank],self.embeddings[2].weight[:,
-	       self.rank:]),dim=1)
 
     def forward(self, x):
         lhs = self.embeddings[0](x[:, 0])
