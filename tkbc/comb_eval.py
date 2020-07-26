@@ -19,7 +19,7 @@ import pkg_resources
 from pathlib import Path
 from typing import Dict
 
-data_dir = 'ICEWS14'
+data_dir = 'yago12k'
 dataset = TemporalDataset(data_dir)
 
 
@@ -52,26 +52,26 @@ num=1
 
 i=0
 component[i]={}
-component[i]['model']='TransE'
-component[i]['rank']=200
-component[i]['lr']=0.0001
-component[i]['batch']=1000
-component[i]['emb_reg']=0
-component[i]['time_reg']=0
+component[i]['model']='TGeomE2'
+component[i]['rank']=2000
+component[i]['lr']=0.1
+component[i]['batch']=50
+component[i]['emb_reg']=0.05
+component[i]['time_reg']=0.0025
 component[i]['time_granularity']=0
 component[i]['epoch_pretrain']=0
 
 
 i+=1
 component[i]={}
-component[i]['model']='TransE'
-component[i]['rank']=200
-component[i]['lr']=0.0001
-component[i]['batch']=1000
-component[i]['emb_reg']=0
-component[i]['time_reg']=0
-component[i]['time_granularity']=0
-component[i]['epoch_pretrain']=0
+component[i]['model']='TGeomE3'
+component[i]['rank']=2000
+component[i]['lr']=0.1
+component[i]['batch']=50
+component[i]['emb_reg']=0.05
+component[i]['time_reg']=0.005
+component[i]['time_granularity']=1
+component[i]['epoch_pretrain']=50
 
 
 ###############  load models one by one #######
@@ -93,7 +93,7 @@ for i in range(num):
         'TGeomE3': TGeomE3(sizes, component[i]['rank'], no_time_emb=False, time_granularity=component[i]['time_granularity'])
     }[component[i]['model']]
     
-    model.load_state_dict(torch.load(os.path.join(PATH, component[i]['model']+str(component[i]['index']) +'.pkl')))
+    model.load_state_dict(torch.load(os.path.join(PATH, component[i]['model'] +'.pkl')))
     model.to(device)
     print('model{:.0f}'.format(i)+' loaded')
 

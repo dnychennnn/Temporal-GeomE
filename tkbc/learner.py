@@ -242,12 +242,12 @@ if __name__ == '__main__':
     ## tune parameters here
     for rank in [2000]:
         for lr in [0.1]:
-            for batch_size in [1000]:
-                for model in ['TGeomE3']:
-                    for emb_reg in [0.01, 0.0075]:
-                        for time_reg in [0.01, 0.0075]:
+            for batch_size in [50]:
+                for model in ['TGeomE2']:
+                    for emb_reg in [0.05]:
+                        for time_reg in [0.0025]:
                             for time_granularity in [1]:
-                                for dataset in ['ICEWS14']:
+                                for dataset in ['yago12k']:
                                     for epoch_pretrain in [50]:
                                         learn(  model=model,
                                             dataset=dataset,
