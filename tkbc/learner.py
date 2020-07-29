@@ -11,6 +11,7 @@ from optimizers import TKBCOptimizer, IKBCOptimizer
 from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2, TGeomE3
 from regularizers import N3, Lambda3
 import os
+import yaml
 
 parser = argparse.ArgumentParser(
     description="Temporal ComplEx"
@@ -133,7 +134,11 @@ def learn(model=args.model,
     time_reg = Lambda3(time_reg)
   
     # Results related
-    os.makedirs(PATH)
+    try:
+        os.makedirs(PATH)
+    except FileExistsError:
+        pass
+    #os.makedirs(PATH)
     patience = 0
     mrr_std = 0
     cur_loss = 0
@@ -238,7 +243,7 @@ if __name__ == '__main__':
     # set cuda device
     torch.cuda.set_device(args.use_gpu)    
 
-
+    """
     ## tune parameters here
     for rank in [2000]:
         for lr in [0.1]:
@@ -259,3 +264,14 @@ if __name__ == '__main__':
                                             time_granularity=time_granularity,
                                               epoch_pretrain = epoch_pretrain
                                              )
+    """
+    with open("config/best_T2.yaml") as f:
+        config = yaml.safe_load(f)
+    hyper_params_T2 = {**config}
+    learn(**hyper_params_T2)
+    
+    with open("config/best_T3.yaml") as f:
+        config = yaml.safe_load(f)
+    hyper_params_T3 = {**config}
+    learn(**hyper_params_T3)
+    #learn(model='TGeomE2', dataset='yago12k', rank=2000, learning_rate=0.1, batch_size=50, emb_reg=0.05, time_reg=0.0025, time_granularity=1, epoch_pretrain=50)

@@ -19,7 +19,7 @@ import pkg_resources
 from pathlib import Path
 from typing import Dict
 
-data_dir = 'yago12k'
+data_dir = 'wikidata11k'
 dataset = TemporalDataset(data_dir)
 
 
@@ -56,10 +56,10 @@ component[i]['model']='TGeomE2'
 component[i]['rank']=2000
 component[i]['lr']=0.1
 component[i]['batch']=50
-component[i]['emb_reg']=0.05
-component[i]['time_reg']=0.0025
-component[i]['time_granularity']=0
-component[i]['epoch_pretrain']=0
+component[i]['emb_reg']=0.025
+component[i]['time_reg']=0.01
+component[i]['time_granularity']=1
+component[i]['epoch_pretrain']=50
 
 
 i+=1
@@ -69,7 +69,7 @@ component[i]['rank']=2000
 component[i]['lr']=0.1
 component[i]['batch']=50
 component[i]['emb_reg']=0.05
-component[i]['time_reg']=0.005
+component[i]['time_reg']=0.01
 component[i]['time_granularity']=1
 component[i]['epoch_pretrain']=50
 
@@ -289,10 +289,9 @@ def avg_both(mrs: Dict[str, float], mrrs: Dict[str, float], hits: Dict[str, torc
     return {'MR': mr, 'MRR': m, 'hits@[1,3,10]': h}
 
 results = avg_both(mean_rank, mean_reciprocal_rank, hits_at)
-print(results)
 filename = ''
 for i in range(num):
-    filename += str(component[i]['index'])
+    filename += str(component[i])
 f = open(os.path.join(PATH, 'result'+filename+'.txt'), 'w+')
 f.write("\n model:")
 for i in range(num):
