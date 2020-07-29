@@ -2,7 +2,7 @@ model: 'TGeomE2'
 dataset: 'wikidata11k'
 rank: 2000
 learning_rate: 0.1
-batch_size: 50
+batch_size: 1000
 emb_reg: 0.025
 time_reg: 0.01
 time_granularity: 1
