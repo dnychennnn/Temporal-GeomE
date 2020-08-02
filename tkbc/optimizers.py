@@ -46,7 +46,7 @@ class TKBCOptimizer(object):
                 l_reg = self.emb_regularizer.forward(factors)
                 l_time = torch.zeros_like(l_reg)
                 if time is not None:
-                    l_time = self.temporal_regularizer.forward(time)
+                    l_time = self.temporal_regularizer.forward(time, self.model.W)
 
                 # if self.left_loss:
                 #     l = (l_fit+l_fit_l)/2 + l_reg + l_time

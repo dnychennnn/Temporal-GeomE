@@ -9,7 +9,7 @@ from torch import optim
 from datasets import TemporalDataset
 from optimizers import TKBCOptimizer, IKBCOptimizer
 from models import ComplEx, TComplEx, TNTComplEx, TGeomE1, TGeomE2, TGeomE3
-from regularizers import N3, Lambda3
+from regularizers import N3, Lambda3, Linear3
 import os
 import yaml
 
@@ -131,7 +131,8 @@ def learn(model=args.model,
     print("Start training process: ", modelname, "on", datasetname, "using", "rank =", rank, "lr =", learning_rate, "emb_reg =", emb_reg, "time_reg =", time_reg, "time_granularity =", time_granularity)
 
     emb_reg = N3(emb_reg)
-    time_reg = Lambda3(time_reg)
+    #time_reg = Lambda3(time_reg)
+    time_reg = Linear3(time_reg)
   
     # Results related
     try:
@@ -243,16 +244,16 @@ if __name__ == '__main__':
     # set cuda device
     torch.cuda.set_device(args.use_gpu)    
 
-    """
+    
     ## tune parameters here
     for rank in [2000]:
         for lr in [0.1]:
-            for batch_size in [50]:
+            for batch_size in [1000]:
                 for model in ['TGeomE2']:
-                    for emb_reg in [0.05]:
-                        for time_reg in [0.0025]:
+                    for emb_reg in [0.0025]:
+                        for time_reg in [0.25, 0.1, 0.075]:
                             for time_granularity in [1]:
-                                for dataset in ['yago12k']:
+                                for dataset in ['ICEWS05-15']:
                                     for epoch_pretrain in [50]:
                                         learn(  model=model,
                                             dataset=dataset,
@@ -265,13 +266,14 @@ if __name__ == '__main__':
                                               epoch_pretrain = epoch_pretrain
                                              )
     """
-    with open("config/best_T2.yaml") as f:
+    with open("config/best_T2_ICEWS14.yaml") as f:
         config = yaml.safe_load(f)
     hyper_params_T2 = {**config}
     learn(**hyper_params_T2)
     
-    with open("config/best_T3.yaml") as f:
-        config = yaml.safe_load(f)
-    hyper_params_T3 = {**config}
-    learn(**hyper_params_T3)
+    #with open("config/best_T3_wiki.yaml") as f:
+    #    config = yaml.safe_load(f)
+    #hyper_params_T3 = {**config}
+    #learn(**hyper_params_T3)
     #learn(model='TGeomE2', dataset='yago12k', rank=2000, learning_rate=0.1, batch_size=50, emb_reg=0.05, time_reg=0.0025, time_granularity=1, epoch_pretrain=50)
+    """

@@ -656,6 +656,8 @@ class TGeomE2(TKBCModel):
         super(TGeomE2, self).__init__()
         self.sizes = sizes
         self.rank = rank
+        self.W = nn.Embedding(4*rank,1,sparse=True)
+        self.W.weight.data *= 0
 
         self.embeddings = nn.ModuleList([
             nn.Embedding(s, 4 * rank, sparse=True)
@@ -933,6 +935,9 @@ class TGeomE3(TKBCModel):
         super(TGeomE3, self).__init__()
         self.sizes = sizes
         self.rank = rank
+
+        self.W = nn.Embedding(8*rank,1,sparse=True)
+        self.W.weight.data *= 0
 
         self.embeddings = nn.ModuleList([
             nn.Embedding(s, 8 * rank, sparse=True)

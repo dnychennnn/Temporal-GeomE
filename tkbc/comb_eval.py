@@ -55,9 +55,9 @@ component[i]={}
 component[i]['model']='TGeomE2'
 component[i]['rank']=2000
 component[i]['lr']=0.1
-component[i]['batch']=50
-component[i]['emb_reg']=0.025
-component[i]['time_reg']=0.01
+component[i]['batch']=1000
+component[i]['emb_reg']=0.05
+component[i]['time_reg']=0.001
 component[i]['time_granularity']=1
 component[i]['epoch_pretrain']=50
 
@@ -67,15 +67,14 @@ component[i]={}
 component[i]['model']='TGeomE3'
 component[i]['rank']=2000
 component[i]['lr']=0.1
-component[i]['batch']=50
+component[i]['batch']=1000
 component[i]['emb_reg']=0.05
 component[i]['time_reg']=0.01
 component[i]['time_granularity']=1
 component[i]['epoch_pretrain']=50
 
-
 ###############  load models one by one #######
-for i in range(num):
+for i in range(num+1):
     
     root = 'results/'+ data_dir +'/' + component[i]['model']
     PATH=os.path.join(root,'rank{:.0f}/lr{:.4f}/batch{:.0f}/time_granularity{:02d}/emb_reg{:.5f}/time_reg{:.5f}/epoch_pretrain{:.5f}'.format(component[i]['rank'],
@@ -289,6 +288,7 @@ def avg_both(mrs: Dict[str, float], mrrs: Dict[str, float], hits: Dict[str, torc
     return {'MR': mr, 'MRR': m, 'hits@[1,3,10]': h}
 
 results = avg_both(mean_rank, mean_reciprocal_rank, hits_at)
+print(results)
 filename = ''
 for i in range(num):
     filename += str(component[i])

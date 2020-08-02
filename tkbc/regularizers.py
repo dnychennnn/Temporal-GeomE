@@ -34,3 +34,14 @@ class Lambda3(Regularizer):
         rank = int(ddiff.shape[1] / 2)
         diff = torch.sqrt(ddiff[:, :rank]**2 + ddiff[:, rank:]**2)**3
         return self.weight * torch.sum(diff) / (factor.shape[0] - 1)
+
+class Linear3(Regularizer):
+    def __init__(self, weight: float):
+        super(Linear3, self).__init__()
+        self.weight = weight
+
+    def forward(self, factor, W):
+        rank = int(factor.shape[1] / 2)
+        ddiff = factor[1:] - factor[:-1] - W.weight[:rank*2].t()
+        diff = torch.sqrt(ddiff[:, :rank]**2 + ddiff[:, rank:]**2)**3
+        return self.weight * torch.sum(diff) / (factor.shape[0] - 1)

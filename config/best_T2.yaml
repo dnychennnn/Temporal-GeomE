@@ -3,7 +3,7 @@ dataset: 'yago12k'
 rank: 2000
 learning_rate: 0.1
 batch_size: 1000
-emb_reg: 0.05
+emb_reg: 0.025
 time_reg: 0.0025
 time_granularity: 1
 epoch_pretrain: 50
