@@ -17,11 +17,11 @@ mrr_timegrans_icews14 = np.array([0.60841,0.59951,0.57444,0.56049,0.53857,0.5061
 hits1_timegrans_icews14 = np.array([0.5156, 0.5012, 0.4673, 0.4492, 0.4227, 0.3862, 0.3512])
 
 # yago12k results
-mrr_timegrans_yago12k = np.array([0.21812, 0.218596,0.216563,0.210776,0.193725])
-hits1_timegrans_yago12k = np.array([0.1573, 0.1588, 0.1559, 0.1507, 0.1378])
+mrr_timegrans_yago12k = np.array([0.18551,0.18475,0.18563,0.180129,0.158906])
+hits1_timegrans_yago12k = np.array([0.1263, 0.1265, 0.1263, 0.1187, 0.1026])
 
-mrr_dimensions_yago12k = np.array([0.171582,0.185287,0.1913437,0.200834,0.21023,0.213937])
-hits1_dimensions_yago12k = np.array([0.1327, 0.1385, 0.1410, 0.1476, 0.1529, 0.1556])
+mrr_dimensions_yago12k = np.array([0.14012,0.15621,0.16331,0.17232,0.17596,0.18401])
+hits1_dimensions_yago12k = np.array([0.1019,0.1073, 0.1143, 0.1195, 0.1202, 0.1255])
 
 
 
@@ -49,7 +49,7 @@ ax1.plot(time_granularities_yago12k, hits1_timegrans_yago12k, label="Hits@1")
 ax1.grid(True)
 ax1.legend()
 ax1.set_xlabel('time granularities')
-plt.title("time granularity YAGO12k")
+plt.title("time granularity YAGO11k")
 
 
 
@@ -70,7 +70,8 @@ ax2.plot(dimensions, hits1_dimensions_yago12k, label="Hits@1")
 ax2.grid(True)
 ax2.legend()
 ax2.set_xlabel('dimensionalities')
-plt.title("dimensions YAGO12k")
+plt.title("dimensions YAGO11k")
 
-plt.show()
+#plt.show()
+
 
